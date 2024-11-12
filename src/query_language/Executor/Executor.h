@@ -3,6 +3,8 @@
 //
 #include <string>
 #include <vector>
+#include "../../database/Database/Database.h"
+#include "../Query/Query.h"
 
 #ifndef DATABASE_CONTROLLER_HSE_QUERYBUILDER_H
 #define DATABASE_CONTROLLER_HSE_QUERYBUILDER_H
@@ -12,19 +14,14 @@ namespace database {
 
     };
 
-    class QueryBuilder {
+    class Executor {
     public:
-        explicit QueryBuilder (std::vector<std::string>& tokens) : m_tokens(tokens) {
+        explicit Executor (Query& query, Database& database) : m_query(&query), m_database(&database) {
 
-        }
-
-        static QueryBuilder BuildFromString(std::string& string_query) {
-            std::vector<std::string> new_tokens = {};
-
-            return QueryBuilder(new_tokens);
         }
     private:
-        std::vector<std::string> m_tokens = {};
+        std::shared_ptr<Query> m_query;
+        std::shared_ptr<Database> m_database;
         Context m_query_context = {};
     };
 } // database

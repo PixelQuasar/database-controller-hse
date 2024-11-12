@@ -9,8 +9,10 @@ set(SOURCE_FILES
         src/database/Result/Result.cpp
         src/database/Table/Table.cpp
         src/calculator/Calculator/Calculator.cpp
-        src/query_language/QueryBuilder/QueryBuilder.cpp
-        src/query_language/QueryBuilder/QueryBuilder.h
+        src/query_language/Executor/Executor.cpp
+        src/query_language/Executor/Executor.h
+        src/query_language/Query/Query.cpp
+        src/query_language/Query/Query.h
 )
 
 add_executable(database ${SOURCE_FILES})
