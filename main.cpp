@@ -12,7 +12,7 @@ public:
 int main() {
     auto db = new database::Database();
 
-    std::string query = " SELECT name FROM users";
+    std::string query = " SELECT * FROM users";
 
     auto names = db->exec<database::Schema>(query);
 
