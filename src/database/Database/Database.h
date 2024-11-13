@@ -7,19 +7,20 @@
 #include <iostream>
 #include <vector>
 #include "../Schema/Schema.h"
+#include "../Result/Result.h"
 
 namespace database {
-
     class Database {
     public:
-        explicit Database() {
-
-        }
+        explicit Database() {}
 
         template<class T>
-        std::vector<std::unique_ptr<T>> exec(std::string& query_str) {
-            std::vector<std::unique_ptr<Schema>> result = {};
-            return result;
+         Result<T> exec(std::string& query_str) {
+            std::vector<std::unique_ptr<Schema>> payload = {};
+
+            return Result<std::vector<std::unique_ptr<Schema>>>(std::move(
+                std::make_unique<std::vector<std::unique_ptr<Schema>>>(std::move(payload))
+            ));
         }
     };
 } // database

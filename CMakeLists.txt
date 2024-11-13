@@ -13,6 +13,8 @@ set(SOURCE_FILES
         src/query_language/Executor/Executor.h
         src/query_language/Query/Query.cpp
         src/query_language/Query/Query.h
+        src/database/Result/Result.cpp
+        src/database/Result/Result.h
 )
 
 add_executable(database ${SOURCE_FILES})
