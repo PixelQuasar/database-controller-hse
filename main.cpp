@@ -1,10 +1,8 @@
 #include <iostream>
 #include "src/database/Database/Database.h"
-#include "src/database/Schema/Schema.h"
 #include "src/database/Result/Result.h"
 
-class User : public database::Schema {
-public:
+struct User {
     std::string email;
     std::string name;
     int age;
@@ -13,11 +11,11 @@ public:
 using namespace database;
 
 int main() {
-    auto db = new database::Database();
+    auto db = database::Database();
 
     std::string query = " SELECT * FROM users";
 
-    auto response = db->exec<std::vector<std::unique_ptr<database::Schema>>>(query);
+    auto response = db.exec(query);
 
     std::cout << "hello world!" << std::endl;
     return 0;

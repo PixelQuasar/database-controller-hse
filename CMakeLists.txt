@@ -6,15 +6,11 @@ set(CMAKE_CXX_STANDARD 20)
 set(SOURCE_FILES
         main.cpp
         src/database/Database/Database.cpp
-        src/database/Schema/Schema.cpp
         src/database/Table/Table.cpp
         src/calculator/Calculator/Calculator.cpp
         src/query_language/Executor/Executor.cpp
-        src/query_language/Executor/Executor.h
         src/query_language/Query/Query.cpp
-        src/query_language/Query/Query.h
         src/database/Result/Result.cpp
-        src/database/Result/Result.h
 )
 
 add_executable(database ${SOURCE_FILES})

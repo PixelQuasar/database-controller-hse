@@ -5,22 +5,25 @@
 #ifndef DATABASE_CONTROLLER_HSE_RESULT_H
 #define DATABASE_CONTROLLER_HSE_RESULT_H
 
+#include <vector>
 #include <string>
+#include <sstream>
+#include <unordered_map>
+#include "../types.h"
 
 namespace database {
-    template <typename T>
     class Result {
     public:
-        explicit Result(std::unique_ptr<T> payload) : m_payload(std::move(payload)), m_error_msg({}) {}
+        Result(std::vector<RowType>&& payload, std::string& error_msg) : m_payload(std::move(payload)), m_error_msg(error_msg) {}
 
-        explicit Result(std::unique_ptr<T> payload, std::string& error_msg) : m_payload(payload), m_error_msg(error_msg) {}
+        explicit Result(std::vector<RowType>&& payload) : m_payload(std::move(payload)) {}
 
-        static Result ErrorResult(std::string& error_msg) {
-            return Result({}, error_msg);
+        static Result errorResult (std::string& msg) {
+            return { {}, msg };
         }
     private:
         std::string m_error_msg;
-        std::unique_ptr<T> m_payload;
+        std::vector<database::RowType> m_payload;
     };
 } // database
 

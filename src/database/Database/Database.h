@@ -6,22 +6,39 @@
 
 #include <iostream>
 #include <vector>
-#include "../Schema/Schema.h"
+#include <unordered_map>
+#include "../types.h"
 #include "../Result/Result.h"
+#include "../Table/Table.h"
 
 namespace database {
     class Database {
     public:
-        explicit Database() {}
+         Database() = default;
 
-        template<class T>
-         Result<T> exec(std::string& query_str) {
-            std::vector<std::unique_ptr<Schema>> payload = {};
+         Result exec(std::string& query_str) {
+             std::vector<RowType> users = {
+                     { {"email", "user1@example.com"}, {"name", "User One"}, {"age", 25} },
+                     { {"email", "user2@example.com"}, {"name", "User Two"}, {"age", 30} },
+                     { {"email", "user3@example.com"}, {"name", "User Three"}, {"age", 22} }
+             };
 
-            return Result<std::vector<std::unique_ptr<Schema>>>(std::move(
-                std::make_unique<std::vector<std::unique_ptr<Schema>>>(std::move(payload))
-            ));
+            return Result({});
         }
+
+        void add_table(const std::string& table_name, const std::vector<std::string>& keys, const std::vector<size_t>& sizes) {
+             m_tables.insert(std::make_pair(table_name, Table(keys, sizes)));
+        }
+
+        void delete_table(const std::string& table_name) {
+            m_tables.erase(table_name);
+        }
+
+        Table& get_table(const std::string& table_name) {
+            return m_tables[table_name];
+        }
+    private:
+        std::unordered_map<std::string, Table> m_tables;
     };
 } // database
 
