@@ -4,10 +4,12 @@
 #ifndef DATABASE_CONTROLLER_HSE_DATABASE_H
 #define DATABASE_CONTROLLER_HSE_DATABASE_H
 
+#include <string>
+#include <fstream>
 #include <iostream>
 #include <vector>
 #include <unordered_map>
-#include "../types.h"
+#include "../../types.h"
 #include "../Result/Result.h"
 #include "../Table/Table.h"
 
@@ -30,13 +32,61 @@ namespace database {
              m_tables.insert(std::make_pair(table_name, Table(keys, sizes)));
         }
 
-        void delete_table(const std::string& table_name) {
-            m_tables.erase(table_name);
-        }
-
         Table& get_table(const std::string& table_name) {
             return m_tables[table_name];
         }
+
+        void save_to_file(std::ofstream&& stream) {
+             struct TableHeader {
+                 std::string name;
+                 size_t entries_number;
+                 std::vector<std::string> keys;
+                 std::vector<size_t> sizes;
+             };
+            for (auto &[name, table]: m_tables) {
+                TableHeader header = { name, table.size(), table.get_keys(), table.get_sizes() };
+                stream.write(reinterpret_cast<char*>(&header), sizeof(TableHeader));
+                for (auto &[key, row]: table.get_rows()) {
+                    stream.write(reinterpret_cast<char*>(
+                            const_cast<DBType*>(&key)
+                    ), sizeof(DBType));
+                    for (auto &value: row) {
+                        stream.write(reinterpret_cast<char*>(&value), sizeof(DBType));
+                    }
+                }
+            }
+        }
+
+        void load_from_file(std::ifstream&& stream) {
+            struct TableHeader {
+                std::string name;
+                size_t entries_number;
+                std::vector<std::string> keys;
+                std::vector<size_t> sizes;
+            };
+            while (stream.peek() != EOF) {
+                TableHeader header;
+                stream.read(reinterpret_cast<char *>(&header), sizeof(TableHeader));
+                std::map<DBType, std::vector<DBType>> rows;
+                for (size_t i = 0; i < header.entries_number; i++) {
+                    DBType key;
+                    stream.read(reinterpret_cast<char *>(&key), sizeof(DBType));
+                    std::vector<DBType> row;
+                    for (size_t j = 0; j < header.keys.size(); j++) {
+                        DBType value;
+                        stream.read(reinterpret_cast<char *>(&value), sizeof(DBType));
+                        row.push_back(value);
+                    }
+                    rows[key] = row;
+                }
+                m_tables.insert(
+                        std::make_pair(
+                                header.name,
+                                Table(header.keys, header.sizes, std::move(rows))
+                        )
+                );
+            }
+         }
     private:
         std::unordered_map<std::string, Table> m_tables;
     };

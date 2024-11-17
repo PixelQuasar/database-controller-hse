@@ -9,7 +9,7 @@
 #include <string>
 #include <sstream>
 #include <unordered_map>
-#include "../types.h"
+#include "../../types.h"
 
 namespace database {
     class Result {
