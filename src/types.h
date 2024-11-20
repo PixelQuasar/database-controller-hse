@@ -8,6 +8,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <variant>
 
 namespace database {
     using DBType = std::variant<int, double, bool, std::string>;
