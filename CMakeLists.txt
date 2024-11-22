@@ -5,9 +5,9 @@ set(CMAKE_CXX_STANDARD 20)
 
 enable_testing()
 
-add_library(Calculator STATIC src/calculator/calculator.cpp)
-target_include_directories(Calculator PUBLIC src/calculator)
+add_subdirectory(external/googletest)
 
+add_subdirectory(src/calculator)
 
 set(SOURCE_FILES
         main.cpp
@@ -21,7 +21,3 @@ set(SOURCE_FILES
 add_executable(database ${SOURCE_FILES})
 
 target_link_libraries(database PRIVATE Calculator)
-
-add_subdirectory(external/googletest)
-
-add_subdirectory(src/calculator)
