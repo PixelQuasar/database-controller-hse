@@ -1,4 +1,4 @@
-#include "Calculator.h"
+#include "calculator.h"
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -32,7 +32,6 @@ namespace calculator {
         std::stack<std::string> operatorStack;
 
         for (const auto& token : tokens) {
-            // Определение типа токена
             if (std::isdigit(token[0]) || 
                 (token[0] == '-' && token.size() > 1 && std::isdigit(token[1])) ||
                 (token[0] == '.' && token.size() > 1)) {

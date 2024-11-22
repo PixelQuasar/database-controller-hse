@@ -1,8 +1,11 @@
-find_package(GTest REQUIRED)
-include_directories(${GTEST_INCLUDE_DIRS})
+file(GLOB_RECURSE TEST_SOURCES "*.cpp")
 
-add_executable(CalculatorTests test.cpp)
+# Создание исполняемого файла для тестов
+add_executable(CalculatorTests ${TEST_SOURCES})
 
-target_link_libraries(CalculatorTests PRIVATE Calculator GTest::GTest GTest::Main)
+# Линковка тестового исполняемого файла с библиотекой Calculator и GoogleTest
+target_link_libraries(CalculatorTests PRIVATE Calculator gtest gtest_main)
 
-add_test(NAME CalculatorTests COMMAND CalculatorTests)
+# Регистрация тестов с использованием GoogleTest
+include(GoogleTest)
+gtest_discover_tests(CalculatorTests)

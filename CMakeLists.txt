@@ -3,7 +3,9 @@ project(database_controller_hse)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_library(Calculator STATIC src/calculator/Calculator.cpp)
+enable_testing()
+
+add_library(Calculator STATIC src/calculator/calculator.cpp)
 target_include_directories(Calculator PUBLIC src/calculator)
 
 
@@ -20,4 +22,6 @@ add_executable(database ${SOURCE_FILES})
 
 target_link_libraries(database PRIVATE Calculator)
 
-add_subdirectory(src/calculator/ut)
+add_subdirectory(external/googletest)
+
+add_subdirectory(src/calculator)
