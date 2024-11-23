@@ -229,11 +229,6 @@ namespace calculator {
             using T1 = std::decay_t<decltype(lhs)>;
             using T2 = std::decay_t<decltype(rhs)>;
 
-            std::cout << "Оператор: " << op 
-                      << ", Тип операнда 1: " << typeid(T1).name() << " (" << lhs << ")"
-                      << ", Тип операнда 2: " << typeid(T2).name() << " (" << rhs << ")"
-                      << std::endl;
-
             if (op == "negate") {
                 if constexpr (std::is_same_v<T1, int>) {
                     return -lhs;
