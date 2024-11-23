@@ -1,4 +1,4 @@
-#include "calculator.h"
+#include "Calculator.h"
 #include <gtest/gtest.h>
 #include <variant>
 #include <vector>
