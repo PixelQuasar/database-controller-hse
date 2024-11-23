@@ -1,4 +1,4 @@
-#include "calculator.h"
+#include "Calculator.h"
 #include <stdexcept>
 #include <string>
 #include <vector>

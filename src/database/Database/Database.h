@@ -5,91 +5,67 @@
 #define DATABASE_CONTROLLER_HSE_DATABASE_H
 
 #include <string>
-#include <fstream>
-#include <iostream>
-#include <vector>
 #include <unordered_map>
-#include "../../types.h"
-#include "../Result/Result.h"
-#include "../Table/Table.h"
+#include <vector>
+#include <variant>
+#include <stdexcept>
+#include "../../query_language/AST/SQLStatement.h"
 
 namespace database {
+
+    using DBType = std::variant<int, double, bool, std::string>;
+
+    class Table {
+    public:
+        Table(const std::string& name, const std::vector<ColumnDefinition>& columns)
+            : name_(name), columns_(columns) {}
+
+        void insertRow(const std::vector<DBType>& row) {
+            if (row.size() != columns_.size()) {
+                throw std::invalid_argument("Row size does not match table columns.");
+            }
+            data_.emplace_back(row);
+        }
+
+        const std::string& getName() const { return name_; }
+        const std::vector<ColumnDefinition>& getColumns() const { return columns_; }
+        const std::vector<std::vector<DBType>>& getData() const { return data_; }
+
+    private:
+        std::string name_;
+        std::vector<ColumnDefinition> columns_;
+        std::vector<std::vector<DBType>> data_;
+    };
+
     class Database {
     public:
-         Database() = default;
-
-         Result exec(std::string& query_str) {
-             std::vector<RowType> users = {
-                     { {"email", "user1@example.com"}, {"name", "User One"}, {"age", 25} },
-                     { {"email", "user2@example.com"}, {"name", "User Two"}, {"age", 30} },
-                     { {"email", "user3@example.com"}, {"name", "User Three"}, {"age", 22} }
-             };
-
-            return Result({});
-        }
-
-        void add_table(const std::string& table_name, const std::vector<std::string>& keys, const std::vector<size_t>& sizes) {
-             m_tables.insert(std::make_pair(table_name, Table(keys, sizes)));
-        }
-
-        Table& get_table(const std::string& table_name) {
-            return m_tables[table_name];
-        }
-
-        void save_to_file(std::ofstream&& stream) {
-             struct TableHeader {
-                 std::string name;
-                 size_t entries_number;
-                 std::vector<std::string> keys;
-                 std::vector<size_t> sizes;
-             };
-            for (auto &[name, table]: m_tables) {
-                TableHeader header = { name, table.size(), table.get_keys(), table.get_sizes() };
-                stream.write(reinterpret_cast<char*>(&header), sizeof(TableHeader));
-                for (auto &[key, row]: table.get_rows()) {
-                    stream.write(reinterpret_cast<char*>(
-                            const_cast<DBType*>(&key)
-                    ), sizeof(DBType));
-                    for (auto &value: row) {
-                        stream.write(reinterpret_cast<char*>(&value), sizeof(DBType));
-                    }
-                }
+        void createTable(const std::string& name, const std::vector<ColumnDefinition>& columns) {
+            if (tables_.find(name) != tables_.end()) {
+                throw std::runtime_error("Table already exists: " + name);
             }
+            tables_.emplace(name, Table(name, columns));
         }
 
-        void load_from_file(std::ifstream&& stream) {
-            struct TableHeader {
-                std::string name;
-                size_t entries_number;
-                std::vector<std::string> keys;
-                std::vector<size_t> sizes;
-            };
-            while (stream.peek() != EOF) {
-                TableHeader header;
-                stream.read(reinterpret_cast<char *>(&header), sizeof(TableHeader));
-                std::map<DBType, std::vector<DBType>> rows;
-                for (size_t i = 0; i < header.entries_number; i++) {
-                    DBType key;
-                    stream.read(reinterpret_cast<char *>(&key), sizeof(DBType));
-                    std::vector<DBType> row;
-                    for (size_t j = 0; j < header.keys.size(); j++) {
-                        DBType value;
-                        stream.read(reinterpret_cast<char *>(&value), sizeof(DBType));
-                        row.push_back(value);
-                    }
-                    rows[key] = row;
-                }
-                m_tables.insert(
-                        std::make_pair(
-                                header.name,
-                                Table(header.keys, header.sizes, std::move(rows))
-                        )
-                );
+        void insertInto(const std::string& tableName, const std::vector<DBType>& values) {
+            auto it = tables_.find(tableName);
+            if (it == tables_.end()) {
+                throw std::runtime_error("Table does not exist: " + tableName);
             }
-         }
+            it->second.insertRow(values);
+        }
+
+        const Table& getTable(const std::string& name) const {
+            auto it = tables_.find(name);
+            if (it == tables_.end()) {
+                throw std::runtime_error("Table does not exist: " + name);
+            }
+            return it->second;
+        }
+
     private:
-        std::unordered_map<std::string, Table> m_tables;
+        std::unordered_map<std::string, Table> tables_;
     };
-} // database
 
-#endif //DATABASE_CONTROLLER_HSE_DATABASE_H
+} // namespace database
+
+#endif // DATABASE_CONTROLLER_HSE_DATABASE_H

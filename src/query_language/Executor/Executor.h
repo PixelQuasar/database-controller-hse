@@ -1,29 +1,27 @@
 //
 // Created by QUASARITY on 06.11.2024.
 //
-#ifndef DATABASE_CONTROLLER_HSE_QUERYBUILDER_H
-#define DATABASE_CONTROLLER_HSE_QUERYBUILDER_H
+#ifndef DATABASE_CONTROLLER_HSE_EXECUTOR_H
+#define DATABASE_CONTROLLER_HSE_EXECUTOR_H
 
-#include <string>
-#include <vector>
 #include "../../database/Database/Database.h"
-#include "../Query/Query.h"
+#include "../AST/SQLStatement.h"
+#include <memory>
+#include <iostream>
+#include "../../Calculator/Calculator.h"
 
 namespace database {
-    class Context {
-
-    };
 
     class Executor {
     public:
-        explicit Executor (Query& query, Database& database) : m_query(&query), m_database(&database) {
+        Executor(Database& database) : m_database(database) {}
 
-        }
+        void execute(const SQLStatement& stmt);
+
     private:
-        std::shared_ptr<Query> m_query;
-        std::shared_ptr<Database> m_database;
-        Context m_query_context = {};
+        Database& m_database;
     };
-} // database
 
-#endif //DATABASE_CONTROLLER_HSE_QUERYBUILDER_H
+} // namespace database
+
+#endif // DATABASE_CONTROLLER_HSE_EXECUTOR_H
