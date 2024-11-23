@@ -19,3 +19,7 @@ make
 ```bash
 ctest
 ```
+Для запуска тестов на отдельную компоненту можно использовать команду 
+`ctest -R <component_name>`
+Пример:
+`ctest -R Calculator` - запуск тестов на компоненту Calculator
