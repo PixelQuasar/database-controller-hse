@@ -84,14 +84,17 @@ namespace database {
 
     std::unique_ptr<InsertStatement> Parser::parseInsert() {
         skipWhitespace();
+
         std::string tableName = parseIdentifier();
         skipWhitespace();
+
         if (!matchKeyword("VALUES")) {
-            throw std::runtime_error("Expected VALUES after table name.");
+            throw std::runtime_error("Ожидалось VALUES после названия таблицы.");
         }
         skipWhitespace();
-        if (sql_[pos_] != '(') {
-            throw std::runtime_error("Expected '(' after VALUES.");
+
+        if (pos_ >= sql_.size() || sql_[pos_] != '(') {
+            throw std::runtime_error("Ожидалась '(' после VALUES.");
         }
         pos_++;
         skipWhitespace();
@@ -99,96 +102,106 @@ namespace database {
         auto insertStmt = std::make_unique<InsertStatement>();
         insertStmt->tableName = tableName;
 
-        int bracketCount = 1;  // Начальная открывающая скобка
-
-        while (!isEnd()) {
+        while (pos_ < sql_.size()) {
             skipWhitespace();
-            
-            // Обработка строковых литералов
+
+            std::string value;
+
             if (sql_[pos_] == '"') {
-                std::string value = "\"";
-                pos_++;
-                while (pos_ < sql_.size() && sql_[pos_] != '"') {
-                    value += sql_[pos_++];
-                }
-                if (sql_[pos_] != '"') {
-                    throw std::runtime_error("Unterminated string literal.");
-                }
-                pos_++;
                 value += '"';
+                pos_++;
+                while (pos_ < sql_.size()) {
+                    if (sql_[pos_] == '\\' && pos_ + 1 < sql_.size() && sql_[pos_ + 1] == '"') {
+                        value += '\"';
+                        pos_ += 2;
+                    }
+                    else if (sql_[pos_] == '"') {
+                        value += '"';
+                        pos_++;
+                        break;
+                    }
+                    else {
+                        value += sql_[pos_++];
+                    }
+                }
+                if (value.back() != '"') {
+                    throw std::runtime_error("Незавершённый строковый литерал.");
+                }
                 insertStmt->values.push_back(value);
             }
-            // Обработка выражений и других значений
             else {
-                std::string value;
+                std::string expr;
                 int localBracketCount = 0;
-                
                 while (pos_ < sql_.size()) {
                     char ch = sql_[pos_];
-                    
                     if (ch == '(') {
                         localBracketCount++;
                     }
                     else if (ch == ')') {
-                        if (localBracketCount == 0) {
-                            if (bracketCount == 1) {  // Конец VALUES
-                                if (!value.empty()) {
-                                    insertStmt->values.push_back(value);
-                                }
-                                pos_++;
-                                bracketCount = 0;
-                                goto end_parsing;  // Выход из обоих циклов
-                            }
+                        if (localBracketCount > 0) {
+                            localBracketCount--;
+                        }
+                        else {
                             break;
                         }
-                        localBracketCount--;
                     }
                     else if (ch == ',' && localBracketCount == 0) {
-                        if (!value.empty()) {
-                            insertStmt->values.push_back(value);
-                        }
-                        pos_++;
-                        value.clear();
-                        skipWhitespace();
-                        continue;
+                        break;
                     }
-                    
-                    value += ch;
+
+                    expr += ch;
                     pos_++;
                 }
-                
-                if (!value.empty()) {
-                    // Убираем лишние пробелы
-                    while (!value.empty() && std::isspace(value.back())) {
-                        value.pop_back();
-                    }
-                    while (!value.empty() && std::isspace(value.front())) {
-                        value.erase(0, 1);
-                    }
-                    if (!value.empty()) {
-                        insertStmt->values.push_back(value);
-                    }
+
+                size_t start = expr.find_first_not_of(" \t\n\r");
+                size_t end = expr.find_last_not_of(" \t\n\r");
+                if (start != std::string::npos && end != std::string::npos) {
+                    expr = expr.substr(start, end - start +1);
+                }
+                else {
+                    expr = "";
+                }
+
+                if (expr.empty()) {
+                    throw std::runtime_error("Empty value in INSERT-query.");
+                }
+
+                insertStmt->values.push_back(expr);
+            }
+
+            skipWhitespace();
+
+            if (pos_ < sql_.size()) {
+                if (sql_[pos_] == ',') {
+                    pos_++;
+                    continue;
+                }
+                else if (sql_[pos_] == ')') {
+                    pos_++;
+                    break;
+                }
+                else {
+                    throw std::runtime_error("Expected ',' or ')' in INSERT-query. Current position: " + std::to_string(pos_) + ", symbol: '" + std::string(1, sql_[pos_]) + "'");
                 }
             }
-            
-            skipWhitespace();
-            if (sql_[pos_] == ',') {
-                pos_++;
-                skipWhitespace();
+            else {
+                throw std::runtime_error("Unexpected end of input: missing ',' or ')'.");
             }
-        }
-
-end_parsing:
-        if (bracketCount != 0) {
-            throw std::runtime_error("Unmatched brackets in INSERT statement.");
         }
 
         skipWhitespace();
+
         if (pos_ >= sql_.size() || sql_[pos_] != ';') {
-            throw std::runtime_error("Expected ';' at the end of INSERT statement.");
+            throw std::runtime_error("Unexpected end of input: missing ';'.");
         }
         pos_++;
-        
+
+        skipWhitespace();
+
+        if (!isEnd()) {
+            throw std::runtime_error("Extra symbols after ';'.");
+        }
+
         return insertStmt;
     }
 
