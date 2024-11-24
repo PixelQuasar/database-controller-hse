@@ -387,7 +387,7 @@ namespace database {
 
             while (sql_[pos_] != ';') {
                 predicate += current_token + " ";
-                current_token = ();
+                current_token = parseToken();
             }
             predicate += current_token;
             selectStmt->predicate = predicate;

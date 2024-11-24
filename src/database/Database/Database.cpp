@@ -6,7 +6,7 @@
 
 namespace database {
 
-    void Database::createTable(const std::string& name, const std::vector<ColumnDefinition>& columns) {
+    void Database::createTable(const std::string& name, const SchemeType& columns) {
         if (tables_.find(name) != tables_.end()) {
             throw std::runtime_error("Table already exists: " + name);
         }

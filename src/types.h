@@ -9,15 +9,33 @@
 #include <unordered_map>
 #include <vector>
 #include <variant>
+#include <map>
 
 namespace database {
+    struct ColumnDefinition {
+        std::string name;
+        std::string type;
+        bool notNull = false;
+        bool isPrimaryKey = false;
+        bool isUnique = false;
+        std::string defaultValue;
+        bool isForeignKey = false;
+        std::string referencesTable;
+        std::string referencesColumn;
+        std::string checkCondition;
+
+        std::string toString() const {
+            return name + " " + type;
+        }
+    };
+
     using DBType = std::variant<int, double, bool, std::string>;
 
     using ResultRowType = std::unordered_map<std::string, DBType>;
 
     using RowType = std::vector<DBType>;
 
-    using RowType = std::vector<DBType>;
+    using SchemeType = std::vector<ColumnDefinition>;
 } //database
 
 #endif //DATABASE_CONTROLLER_HSE_TYPES_H

@@ -18,7 +18,7 @@ namespace database {
     public:
         Table() {}
 
-        Table(const std::string& name, const std::vector<ColumnDefinition>& columns)
+        Table(const std::string& name, const SchemeType& columns)
             : name_(name), scheme_(columns) {
         }
 
@@ -30,8 +30,12 @@ namespace database {
             return rows_;
         }
 
-        std::vector<ColumnDefinition> get_scheme() const {
+        SchemeType get_scheme() const {
             return scheme_;
+        }
+
+        std::map<std::string, size_t> get_column_to_row_offset() const {
+            return column_to_row_offset_;
         }
 
         std::string get_name() const {
@@ -60,9 +64,10 @@ namespace database {
         void load_from_byte_buffer(const std::string& buffer);
     private:
         std::string name_;
-        std::vector<ColumnDefinition> scheme_;
+        SchemeType scheme_;
         std::vector<RowType> rows_;
         std::vector<size_t> row_sizes_;
+        std::map<std::string, size_t> column_to_row_offset_;
     };
 
 } // database

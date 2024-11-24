@@ -14,7 +14,7 @@ namespace database {
 
     class Database {
     public:
-        void createTable(const std::string& name, const std::vector<ColumnDefinition>& columns);
+        void createTable(const std::string& name, const SchemeType& columns);
         void insertInto(const std::string& tableName, const RowType& values);
         const Table& getTable(const std::string& name) const;
 

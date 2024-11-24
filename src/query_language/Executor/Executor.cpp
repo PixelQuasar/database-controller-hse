@@ -48,16 +48,17 @@ namespace database {
                 }
                 m_database.insertInto(insertStmt->tableName, row);
             } else if (const auto *insertStmt = dynamic_cast<const SelectStatement *>(&stmt)) {
-                //auto table = m_database.getTable(insertStmt->tableName);
+                auto table = m_database.getTable(insertStmt->tableName);
 
-//                auto filter_predicate = [](const std::vector<DBType>& row){
+//                auto filter_predicate = [table](const std::vector<DBType>& row){
 //                    std::unordered_map<std::string, DBType> row_values = {};
-//                    for (const auto& [key, value] : table) {
-//                        row_values
+//                    for (const auto& [name, index] : table.get_column_to_row_offset()) {
+//                        row_values[name] = row[index];
 //                    }
+//                    auto calc_result = calc.evaluate(valStr);
 //                };
-
-                //filter_predicate({});
+//
+//                filter_predicate({});
 
             } else {
                 throw std::runtime_error("Unsupported SQL statement.");

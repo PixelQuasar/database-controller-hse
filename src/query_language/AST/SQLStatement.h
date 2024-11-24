@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include "../../types.h"
 
 namespace database {
     class SQLStatement {
@@ -12,27 +13,10 @@ namespace database {
         virtual std::string toString() const = 0;
     };
 
-    struct ColumnDefinition {
-        std::string name;
-        std::string type;
-        bool notNull = false;
-        bool isPrimaryKey = false;
-        bool isUnique = false;
-        std::string defaultValue;
-        bool isForeignKey = false;
-        std::string referencesTable;
-        std::string referencesColumn;
-        std::string checkCondition;
-
-        std::string toString() const {
-            return name + " " + type;
-        }
-    };
-
     class CreateTableStatement : public SQLStatement {
     public:
         std::string tableName;
-        std::vector<ColumnDefinition> columns;
+        SchemeType columns;
 
         std::string toString() const override {
             std::string result = "CREATE TABLE " + tableName + " (";
