@@ -13,7 +13,9 @@
 namespace database {
     using DBType = std::variant<int, double, bool, std::string>;
 
-    using RowType = std::unordered_map<std::string, DBType>;
+    using ResultRowType = std::unordered_map<std::string, DBType>;
+
+    using RowType = std::vector<DBType>;
 
 //    std::vector<std::vector<std::string>> query_templates = {
 //            { "SELECT", "FROM" },

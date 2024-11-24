@@ -11,9 +11,9 @@
 namespace database {
     std::string Table::convert_to_byte_buffer() {
         std::string buffer;
-        for (auto& row : m_rows) {
+        for (auto& row : rows_) {
             int current_column_index = 0;
-            for (auto& cell : row.second) {
+            for (auto& cell : row) {
                 union {
                     int intValue;
                     double doubleValue;
@@ -36,7 +36,7 @@ namespace database {
                 }
                 if (std::holds_alternative<std::string>(cell)) {
                     std::string str = std::get<std::string>(cell);
-                    str.resize(m_row_sizes[current_column_index]);
+                    str.resize(row_sizes_[current_column_index]);
                     buffer.append(str);
                 }
                 // TODO add buffer type;
@@ -48,11 +48,11 @@ namespace database {
     }
 
     void Table::load_from_byte_buffer(const std::string &buffer) {
-        std::map<DBType, std::vector<DBType>> rows;
+        std::vector<RowType> rows;
         size_t offset = 0;
         while (offset < buffer.size()) {
-            std::vector<DBType> row;
-            for (size_t size: m_row_sizes) {
+            RowType row;
+            for (size_t size: row_sizes_) {
                 if (size == 4) {
                     union {
                         int intValue;
@@ -75,17 +75,18 @@ namespace database {
                     offset += size;
                 }
             }
-            rows[row[0]] = row;
+            rows.push_back(row);
         }
+        rows_ = rows;
     }
 
-    std::vector<std::vector<DBType>> Table::filter(
-            const std::function<bool(const std::vector<DBType>&)>& predicate
+    std::vector<RowType> Table::filter(
+            const std::function<bool(const RowType&)>& predicate
     ) {
-        std::vector<std::vector<DBType>> result;
-        for (auto& row : m_rows) {
-            if (predicate(row.second)) {
-                result.push_back(row.second);
+        std::vector<RowType> result;
+        for (auto& row : rows_) {
+            if (predicate(row)) {
+                result.push_back(row);
             }
         }
         return result;
@@ -95,9 +96,9 @@ namespace database {
             const std::function<void(std::vector<DBType>&)>& updater,
             const std::function<bool(const std::vector<DBType>&)>& predicate
     ) {
-        for (auto& row : m_rows) {
-            if (predicate(row.second)) {
-                updater(row.second);
+        for (auto& row : rows_) {
+            if (predicate(row)) {
+                updater(row);
             }
         }
     }
@@ -105,14 +106,14 @@ namespace database {
     void Table::remove_many(
             const std::function<bool(const std::vector<DBType>&)>& predicate
     ) {
-        std::vector<DBType> keys_to_remove;
-        for (auto& row : m_rows) {
-            if (predicate(row.second)) {
-                keys_to_remove.push_back(row.first);
+        std::vector<RowType> rows_to_remove;
+        for (auto& row : rows_) {
+            if (predicate(row)) {
+                rows_to_remove.push_back(row);
             }
         }
-        for (auto& key : keys_to_remove) {
-            m_rows.erase(key);
+        for (auto& row : rows_to_remove) {
+            rows_.erase(std::find(rows_.begin(), rows_.end(), row));
         }
     }
 

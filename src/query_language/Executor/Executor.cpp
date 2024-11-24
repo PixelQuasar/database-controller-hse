@@ -18,7 +18,7 @@ namespace database {
             std::vector<DBType> row;
             calculator::Calculator calc;
             const auto& table = m_database.getTable(insertStmt->tableName);
-            const auto& columns = table.getColumns();
+            const auto& columns = table.get_scheme();
 
             if (insertStmt->values.size() != columns.size()) {
                 throw std::runtime_error("Number of values does not match number of columns.");
