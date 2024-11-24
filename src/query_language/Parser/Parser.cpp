@@ -99,9 +99,14 @@ namespace database {
         auto insertStmt = std::make_unique<InsertStatement>();
         insertStmt->tableName = tableName;
 
-        while (sql_[pos_] != ')' && !isEnd()) {
-            std::string value;
+        int bracketCount = 1;  // Начальная открывающая скобка
+
+        while (!isEnd()) {
+            skipWhitespace();
+            
+            // Обработка строковых литералов
             if (sql_[pos_] == '"') {
+                std::string value = "\"";
                 pos_++;
                 while (pos_ < sql_.size() && sql_[pos_] != '"') {
                     value += sql_[pos_++];
@@ -110,12 +115,62 @@ namespace database {
                     throw std::runtime_error("Unterminated string literal.");
                 }
                 pos_++;
-                value = "\"" + value + "\"";
+                value += '"';
+                insertStmt->values.push_back(value);
             }
+            // Обработка выражений и других значений
             else {
-                value = parseToken();
+                std::string value;
+                int localBracketCount = 0;
+                
+                while (pos_ < sql_.size()) {
+                    char ch = sql_[pos_];
+                    
+                    if (ch == '(') {
+                        localBracketCount++;
+                    }
+                    else if (ch == ')') {
+                        if (localBracketCount == 0) {
+                            if (bracketCount == 1) {  // Конец VALUES
+                                if (!value.empty()) {
+                                    insertStmt->values.push_back(value);
+                                }
+                                pos_++;
+                                bracketCount = 0;
+                                goto end_parsing;  // Выход из обоих циклов
+                            }
+                            break;
+                        }
+                        localBracketCount--;
+                    }
+                    else if (ch == ',' && localBracketCount == 0) {
+                        if (!value.empty()) {
+                            insertStmt->values.push_back(value);
+                        }
+                        pos_++;
+                        value.clear();
+                        skipWhitespace();
+                        continue;
+                    }
+                    
+                    value += ch;
+                    pos_++;
+                }
+                
+                if (!value.empty()) {
+                    // Убираем лишние пробелы
+                    while (!value.empty() && std::isspace(value.back())) {
+                        value.pop_back();
+                    }
+                    while (!value.empty() && std::isspace(value.front())) {
+                        value.erase(0, 1);
+                    }
+                    if (!value.empty()) {
+                        insertStmt->values.push_back(value);
+                    }
+                }
             }
-            insertStmt->values.push_back(value);
+            
             skipWhitespace();
             if (sql_[pos_] == ',') {
                 pos_++;
@@ -123,15 +178,17 @@ namespace database {
             }
         }
 
-        if (sql_[pos_] != ')') {
-            throw std::runtime_error("Expected ')' at the end of VALUES.");
+end_parsing:
+        if (bracketCount != 0) {
+            throw std::runtime_error("Unmatched brackets in INSERT statement.");
         }
-        pos_++;
+
         skipWhitespace();
-        if (sql_[pos_] != ';') {
+        if (pos_ >= sql_.size() || sql_[pos_] != ';') {
             throw std::runtime_error("Expected ';' at the end of INSERT statement.");
         }
         pos_++;
+        
         return insertStmt;
     }
 
