@@ -145,6 +145,13 @@ namespace database {
                 }
             }
 
+            if (scheme_[i].isKey) {
+                if (indixes_[scheme_[i].name].count(row[i])) {
+                    throw std::runtime_error("Key constraint violated for column: " + scheme_[i].name);
+                }
+                indixes_[scheme_[i].name].insert(row[i]);
+            }
+
             if (scheme_[i].isAutoIncrement) {
                 if (std::holds_alternative<int>(row[i]) && std::get<int>(row[i]) == 0) {
                     row[i] = autoIncrementValues_[scheme_[i].name]++;
@@ -173,6 +180,7 @@ namespace database {
 
     void Table::addKeyConstraint(const std::string& columnName) {
         addUniqueConstraint(columnName);
+        indixes_[columnName] = {};
     }
 
 } // database

@@ -31,32 +31,21 @@ TEST_F(ParserTest, ParseInsert) {
 }
 
 TEST_F(ParserTest, ParseCreateTableWithAttributes) {
-    auto stmt = Parser::parse(
-        "CREATE TABLE Employees ("
-        "    ID INT,"
-        "    FirstName VARCHAR,"
-        "    LastName VARCHAR,"
-        "    Age INT,"
-        "    Salary DOUBLE,"
-        "    IsManager BOOL,"
-        "    IsFullTime BOOL,"
-        "    YearsOfService DOUBLE,"
-        "    PerformanceScore INT"
-        ");"
-    );
-
+    auto stmt = Parser::parse("CREATE TABLE Test (ID INT AUTOINCREMENT, Name VARCHAR UNIQUE);");
     auto createStmt = dynamic_cast<CreateTableStatement*>(stmt.get());
     ASSERT_NE(createStmt, nullptr);
-    EXPECT_EQ(createStmt->tableName, "Employees");
-    ASSERT_EQ(createStmt->columns.size(), 9);
-    
+    EXPECT_EQ(createStmt->tableName, "Test");
+    ASSERT_EQ(createStmt->columns.size(), 2);
+
     EXPECT_EQ(createStmt->columns[0].name, "ID");
     EXPECT_EQ(createStmt->columns[0].type, "INT");
+    EXPECT_TRUE(createStmt->columns[0].isAutoIncrement);
     EXPECT_FALSE(createStmt->columns[0].isUnique);
 
-    EXPECT_EQ(createStmt->columns[1].name, "FirstName");
+    EXPECT_EQ(createStmt->columns[1].name, "Name");
     EXPECT_EQ(createStmt->columns[1].type, "VARCHAR");
-    EXPECT_FALSE(createStmt->columns[1].isUnique);
+    EXPECT_TRUE(createStmt->columns[1].isUnique);
+    EXPECT_FALSE(createStmt->columns[1].isAutoIncrement);
 }
 
 TEST_F(ParserTest, ComplexParsingScenario) {

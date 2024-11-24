@@ -17,6 +17,7 @@ namespace database {
         std::string type;
         bool notNull = false;
         bool isUnique = false;
+        bool isKey = false;
         std::string defaultValue;
         bool isAutoIncrement = false;
 

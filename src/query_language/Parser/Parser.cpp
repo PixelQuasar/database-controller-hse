@@ -79,6 +79,8 @@ namespace database {
                 }
                 else if (matchKeyword("KEY")) {
                     column.isUnique = true;
+                    column.isKey = true;
+                    std::cerr << "Parsed KEY for column: " << column.name << std::endl;
                 }
                 else {
                     std::string unknownAttr = parseIdentifier();

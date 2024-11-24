@@ -9,6 +9,7 @@
 #include <vector>
 #include <string>
 #include <functional>
+#include <set>
 #include "../../types.h"
 #include "../../query_language/AST/SQLStatement.h"
 
@@ -71,6 +72,7 @@ namespace database {
         std::vector<std::string> checkConditions_;
         bool hasCheckCondition_ = false;
         std::map<std::string, int> autoIncrementValues_;
+        std::map<std::string, std::set<DBType>> indixes_;
     };
 
 } // database
