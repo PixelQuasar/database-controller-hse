@@ -42,12 +42,12 @@ namespace database {
             return name_;
         }
 
-        void insert_row(const RowType& row) {
-            if (row.size() != scheme_.size()) {
-                throw std::runtime_error("Number of values does not match number of columns.");
-            }
-            rows_.push_back(row);
-        }
+        void insert_row(RowType row);
+
+        void addAutoIncrement(const std::string& columnName);
+        void addUniqueConstraint(const std::string& columnName);
+        void addKeyConstraint(const std::string& columnName);
+
         std::vector<RowType> filter(const std::function<bool(const RowType&)>& predicate);
 
         void update_many(
@@ -68,6 +68,9 @@ namespace database {
         std::vector<RowType> rows_;
         std::vector<size_t> row_sizes_;
         std::map<std::string, size_t> column_to_row_offset_;
+        std::vector<std::string> checkConditions_;
+        bool hasCheckCondition_ = false;
+        std::map<std::string, int> autoIncrementValues_;
     };
 
 } // database

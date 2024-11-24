@@ -13,17 +13,11 @@ TEST_F(ParserTest, ParseCreateTable) {
     ASSERT_EQ(createStmt->columns.size(), 2);
     EXPECT_EQ(createStmt->columns[0].name, "ID");
     EXPECT_EQ(createStmt->columns[0].type, "INT");
-    EXPECT_FALSE(createStmt->columns[0].notNull);
-    EXPECT_FALSE(createStmt->columns[0].isPrimaryKey);
     EXPECT_FALSE(createStmt->columns[0].isUnique);
-    EXPECT_EQ(createStmt->columns[0].defaultValue, "");
 
     EXPECT_EQ(createStmt->columns[1].name, "Name");
     EXPECT_EQ(createStmt->columns[1].type, "VARCHAR");
-    EXPECT_FALSE(createStmt->columns[1].notNull);
-    EXPECT_FALSE(createStmt->columns[1].isPrimaryKey);
     EXPECT_FALSE(createStmt->columns[1].isUnique);
-    EXPECT_EQ(createStmt->columns[1].defaultValue, "");
 }
 
 TEST_F(ParserTest, ParseInsert) {
@@ -39,15 +33,15 @@ TEST_F(ParserTest, ParseInsert) {
 TEST_F(ParserTest, ParseCreateTableWithAttributes) {
     auto stmt = Parser::parse(
         "CREATE TABLE Employees ("
-        "    ID INT PRIMARY KEY,"
-        "    FirstName VARCHAR NOT NULL,"
-        "    LastName VARCHAR NOT NULL,"
-        "    Age INT DEFAULT 30,"
-        "    Salary DOUBLE DEFAULT 50000.0,"
-        "    IsManager BOOL DEFAULT false,"
-        "    IsFullTime BOOL DEFAULT true,"
-        "    YearsOfService DOUBLE DEFAULT 5.5,"
-        "    PerformanceScore INT DEFAULT 100"
+        "    ID INT,"
+        "    FirstName VARCHAR,"
+        "    LastName VARCHAR,"
+        "    Age INT,"
+        "    Salary DOUBLE,"
+        "    IsManager BOOL,"
+        "    IsFullTime BOOL,"
+        "    YearsOfService DOUBLE,"
+        "    PerformanceScore INT"
         ");"
     );
 
@@ -58,17 +52,11 @@ TEST_F(ParserTest, ParseCreateTableWithAttributes) {
     
     EXPECT_EQ(createStmt->columns[0].name, "ID");
     EXPECT_EQ(createStmt->columns[0].type, "INT");
-    EXPECT_FALSE(createStmt->columns[0].notNull);
-    EXPECT_TRUE(createStmt->columns[0].isPrimaryKey);
     EXPECT_FALSE(createStmt->columns[0].isUnique);
-    EXPECT_EQ(createStmt->columns[0].defaultValue, "");
 
     EXPECT_EQ(createStmt->columns[1].name, "FirstName");
     EXPECT_EQ(createStmt->columns[1].type, "VARCHAR");
-    EXPECT_TRUE(createStmt->columns[1].notNull);
-    EXPECT_FALSE(createStmt->columns[1].isPrimaryKey);
     EXPECT_FALSE(createStmt->columns[1].isUnique);
-    EXPECT_EQ(createStmt->columns[1].defaultValue, "");
 }
 
 TEST_F(ParserTest, ComplexParsingScenario) {

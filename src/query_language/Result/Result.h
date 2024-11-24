@@ -30,6 +30,9 @@ namespace database {
         static Result errorResult (std::string&& msg) {
             return { {}, msg, true };
         }
+
+        bool is_ok() const { return !m_is_error; }
+
     private:
         bool m_is_error = false;
         std::string m_error_msg;

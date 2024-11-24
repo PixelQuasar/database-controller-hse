@@ -7,7 +7,10 @@
 #include <map>
 #include <functional>
 #include "Table.h"
-
+#include <stdexcept>
+#include <algorithm>
+#include <iostream>
+#include "../../Calculator/Calculator.h"
 namespace database {
     std::string Table::convert_to_byte_buffer() {
         std::string buffer;
@@ -115,6 +118,61 @@ namespace database {
         for (auto& row : rows_to_remove) {
             rows_.erase(std::find(rows_.begin(), rows_.end(), row));
         }
+    }
+
+    void Table::addUniqueConstraint(const std::string& columnName) {
+        auto it = std::find_if(scheme_.begin(), scheme_.end(), [&](const ColumnDefinition& col) {
+            return col.name == columnName;
+        });
+        if (it == scheme_.end()) {
+            throw std::runtime_error("Column not found: " + columnName);
+        }
+        it->isUnique = true;
+    }
+
+    void Table::insert_row(RowType row) {
+
+        if (row.size() > scheme_.size()) {
+            throw std::runtime_error("Number of values exceeds number of columns.");
+        }
+
+        for (size_t i = 0; i < scheme_.size(); ++i) {
+            if (scheme_[i].isUnique) {
+                for (const auto& existing_row : rows_) {
+                    if (existing_row[i] == row[i]) {
+                        throw std::runtime_error("Unique constraint violated for column: " + scheme_[i].name);
+                    }
+                }
+            }
+
+            if (scheme_[i].isAutoIncrement) {
+                if (std::holds_alternative<int>(row[i]) && std::get<int>(row[i]) == 0) {
+                    row[i] = autoIncrementValues_[scheme_[i].name]++;
+                } else if (!std::holds_alternative<int>(row[i])) {
+                    throw std::runtime_error("AutoIncrement is only applicable to integer columns.");
+                }
+            }
+        }
+
+        rows_.push_back(row);
+    }
+
+    void Table::addAutoIncrement(const std::string& columnName) {
+        auto it = std::find_if(scheme_.begin(), scheme_.end(), [&](const ColumnDefinition& col) {
+            return col.name == columnName;
+        });
+        if (it == scheme_.end()) {
+            throw std::runtime_error("Column not found: " + columnName);
+        }
+        if (it->type != "INT") {
+            throw std::runtime_error("AutoIncrement is only applicable to integer columns.");
+        }
+        it->isAutoIncrement = true;
+        autoIncrementValues_[columnName] = 0;
+    }
+
+    void Table::addKeyConstraint(const std::string& columnName) {
+        addUniqueConstraint(columnName);
     }
 
 } // database
