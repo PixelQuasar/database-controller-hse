@@ -1,5 +1,6 @@
 #include "Parser.h"
 #include <algorithm>
+#include <iostream>
 
 namespace database {
 
@@ -22,6 +23,8 @@ namespace database {
                 throw std::runtime_error("Expected INTO after INSERT");
             }
             return parseInsert();
+        } else if (matchKeyword("SELECT")) {
+            return parseSelect();
         } else {
             throw std::runtime_error("Unsupported SQL statement.");
         }
@@ -205,6 +208,47 @@ namespace database {
         return insertStmt;
     }
 
+    std::unique_ptr<SelectStatement> Parser::parseSelect() {
+        auto selectStmt = std::make_unique<SelectStatement>();
+
+        skipWhitespace();
+        std::vector<std::string> columns = {};
+
+        do {
+            columns.push_back(parseIdentifier());
+        } while (sql_[pos_++] == ',');
+
+        selectStmt->column_names = columns;
+
+        skipWhitespace();
+
+        if (!matchKeyword("FROM")) {
+            throw std::runtime_error("Expected FROM after column list in SELECT statement.");
+        }
+
+        std::string tableName = parseIdentifier();
+
+        selectStmt->tableName = tableName;
+
+        skipWhitespace();
+
+        if (matchKeyword("WHERE")) {
+            std::string predicate;
+            std::string current_token = parseIdentifier();
+
+            while (sql_[pos_] != ';') {
+                predicate += current_token + " ";
+                current_token = parseToken();
+            }
+            predicate += current_token;
+            selectStmt->predicate = predicate;
+        }
+
+        std::cout << "Parsed SELECT statement: " << selectStmt->toString() << std::endl;
+
+        return selectStmt;
+    }
+
     void Parser::skipWhitespace() {
         while (pos_ < sql_.size() && std::isspace(sql_[pos_])) {
             pos_++;
@@ -220,7 +264,7 @@ namespace database {
         }
 
         char firstChar = sql_[pos_];
-        if (!(std::isalpha(firstChar) || firstChar == '_')) {
+        if (!(std::isalpha(firstChar) || firstChar == '_' || firstChar == '*')) {
             throw std::runtime_error("Invalid identifier: must start with a letter or underscore");
         }
 
@@ -272,4 +316,24 @@ namespace database {
         return pos_ >= sql_.size();
     }
 
-} // namespace database 
+} // namespace database
+
+
+/*
+    vector entries;
+
+    map indexes {
+        id_index {
+            123312132: 0,
+            45645643563465: 1,
+            45625342354: 2
+        }
+
+        name_index {
+            "Ivan": 0,
+            "Petr": 1,
+            "Sergey": 2
+        }
+    }
+
+ */

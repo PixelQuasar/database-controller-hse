@@ -2,6 +2,9 @@
 #include "src/query_language/Executor/Executor.h"
 #include "src/database/Database/Database.h"
 #include "src/query_language/Query/Query.h"
+#include "src/query_language/Result/Result.h"
+#include "src/query_language/AST/SQLStatement.h"
+#include "src/query_language/Executor/Executor.h"
 #include <iostream>
 
 int main() {
@@ -13,11 +16,14 @@ int main() {
 //                        "    City varchar(255)\n"
 //                        ");";
 
-    std::string raw_str = "SELECT * FROM Persons;";
+    std::string raw_str = "SELECT name, password FROM Persons WHERE age > 6;";
 
+    auto db = database::Database();
 
+    auto parsed = database::Parser::parse(raw_str);
 
-    database::Query query(raw_str);
+    auto exectutor = database::Executor(db);
+
 
     return 0;
 }
