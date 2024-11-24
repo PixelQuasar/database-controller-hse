@@ -155,7 +155,7 @@ TEST_F(ParserTest, ParseInsertWithColumnAssignments) {
 }
 
 TEST_F(ParserTest, ParseInsertWithColumnAssignmentsAndExpressions) {
-    auto stmt = Parser::parse("INSERT INTO Employees (ID = 2, FirstName = \"Jane\", LastName = \"Smith\", Age = 25 + 3, Salary = 60000.0 * 1.1, IsManager = false, IsFullTime = true, YearsOfService = (2.5 + 1.5) * 2, PerformanceScore = 100 - 10);");
+    auto stmt = Parser::parse("INSERT INTO Employees (ID = 2, FirstName = \"Jane\", LastName = \"Smith\", Age = 25 + 3, Salary = (1.1 * (60000.0 * 1.1)) / 1.1, IsManager = false && true, IsFullTime = true, YearsOfService = (2.5 + 1.5) * 2, PerformanceScore = 100 - 10);");
     auto insertStmt = dynamic_cast<InsertStatement*>(stmt.get());
     ASSERT_NE(insertStmt, nullptr);
     EXPECT_EQ(insertStmt->tableName, "Employees");

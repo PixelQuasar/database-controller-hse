@@ -35,6 +35,7 @@ namespace database {
 
         std::string parseStringLiteral();
         std::string parseExpression();
+        bool isNumericExpression(const std::string& expr);
     };
 
 } // namespace database

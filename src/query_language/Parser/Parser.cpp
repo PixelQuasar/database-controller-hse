@@ -210,7 +210,7 @@ namespace database {
                                    c == '*' || c == '/' || c == '(' || c == ')' || 
                                    std::isspace(c);
                         })) {
-                        throw std::runtime_error("String value must be enclosed in quotes: " + value);
+                        throw std::runtime_error("String value HERE must be enclosed in quotes: " + value);
                     }
                 }
 
@@ -417,7 +417,27 @@ namespace database {
             pos_++;
         }
         
-        return trim(value);
+        value = trim(value);
+
+        if (!value.empty() && !isBooleanLiteral(value) && !isNumericExpression(value) && value != "NULL") {
+            if (!std::all_of(value.begin(), value.end(), [](char c) {
+                return std::isdigit(c) || c == '.' || c == '+' || c == '-' || 
+                       c == '*' || c == '/' || c == '(' || c == ')' || 
+                       std::isspace(c) || c == '&' || c == '|' || c == 't' || c == 'r' || c == 'u' || c == 'e' || c == 'f' || c == 'a' || c == 'l' || c == 's';
+            })) {
+                throw std::runtime_error("String value must be enclosed in quotes: " + value);
+            }
+        }
+
+        return value;
+    }
+
+    bool Parser::isNumericExpression(const std::string& expr) {
+        return std::all_of(expr.begin(), expr.end(), [](char c) {
+            return std::isdigit(c) || c == '.' || c == '+' || c == '-' || 
+                   c == '*' || c == '/' || c == '(' || c == ')' || 
+                   std::isspace(c);
+        });
     }
 
 } // namespace database

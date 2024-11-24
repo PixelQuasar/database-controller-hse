@@ -299,6 +299,72 @@ TEST_F(ExecutorTest, KeyConstraint) {
     EXPECT_TRUE(result2.is_ok());
 }
 
+TEST_F(ExecutorTest, InsertWithColumnAssignments) {
+    auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR, Age INT);");
+    executor.execute(*createStmt);
+
+    auto insertStmt = Parser::parse("INSERT INTO Test (Name = \"Alice\", Age = 25, ID = 1);");
+    executor.execute(*insertStmt);
+
+    const auto& table = db.getTable("Test");
+    const auto& data = table.get_rows();
+    ASSERT_EQ(data.size(), 1);
+    EXPECT_EQ(std::get<int>(data[0][0]), 1);
+    EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
+    EXPECT_EQ(std::get<int>(data[0][2]), 25);
+}
+
+TEST_F(ExecutorTest, InsertWithPartialColumnAssignments) {
+    auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR, Age INT);");
+    executor.execute(*createStmt);
+
+    auto insertStmt = Parser::parse("INSERT INTO Test (Name = \"Bob\", ID = 2);");
+    executor.execute(*insertStmt);
+
+    const auto& table = db.getTable("Test");
+    const auto& data = table.get_rows();
+    ASSERT_EQ(data.size(), 1);
+    EXPECT_EQ(std::get<int>(data[0][0]), 2);
+    EXPECT_EQ(std::get<std::string>(data[0][1]), "Bob");
+}
+
+TEST_F(ExecutorTest, InsertWithComplexColumnAssignments) {
+    auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR, Age INT, Salary DOUBLE, Active BOOL);");
+    executor.execute(*createStmt);
+
+    auto insertStmt = Parser::parse(
+        "INSERT INTO Test (Name = \"Alice\", Age = 20 + 5, ID = 1, Salary = 50000.0 * 1.1, Active = true && false);"
+    );
+    executor.execute(*insertStmt);
+
+    const auto& table = db.getTable("Test");
+    const auto& data = table.get_rows();
+    ASSERT_EQ(data.size(), 1);
+    EXPECT_EQ(std::get<int>(data[0][0]), 1);
+    EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
+    EXPECT_EQ(std::get<int>(data[0][2]), 25);
+    EXPECT_DOUBLE_EQ(std::get<double>(data[0][3]), 55000.0);
+    EXPECT_EQ(std::get<bool>(data[0][4]), false);
+}
+
+TEST_F(ExecutorTest, InsertWithMixedAssignmentsAndDefaults) {
+    auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR, Age INT, Salary DOUBLE, Active BOOL);");
+    executor.execute(*createStmt);
+
+    auto insertStmt = Parser::parse(
+        "INSERT INTO Test (Name = \"Bob\", ID = 2, Active = true);"
+    );
+    executor.execute(*insertStmt);
+
+    const auto& table = db.getTable("Test");
+    const auto& data = table.get_rows();
+    ASSERT_EQ(data.size(), 1);
+    EXPECT_EQ(std::get<int>(data[0][0]), 2);
+    EXPECT_EQ(std::get<std::string>(data[0][1]), "Bob");
+
+    EXPECT_EQ(std::get<bool>(data[0][4]), true);
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
