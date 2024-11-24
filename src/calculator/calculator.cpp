@@ -5,6 +5,7 @@
 #include <stack>
 #include <cctype>
 #include <variant>
+#include <unordered_map>
 
 namespace calculator {
 
@@ -26,8 +27,10 @@ namespace calculator {
         return applyOperator("/", a, b);
     }
 
-    Value Calculator::evaluate(const std::string& expression) {
-        std::vector<std::string> tokens = tokenize(expression);
+    Value Calculator::evaluate(
+        const std::string& expression, const std::unordered_map<std::string, std::string>& external_values
+    ) {
+        std::vector<std::string> tokens = tokenize(expression, external_values);
         std::vector<std::string> outputQueue;
         std::stack<std::string> operatorStack;
 
@@ -118,7 +121,9 @@ namespace calculator {
         return valueStack.top();
     }
 
-    std::vector<std::string> Calculator::tokenize(const std::string& expression) {
+    std::vector<std::string> Calculator::tokenize(
+        const std::string& expression, const std::unordered_map<std::string, std::string>& external_values
+    ) {
         std::vector<std::string> tokens;
         std::string token;
         bool inString = false;
@@ -150,28 +155,35 @@ namespace calculator {
                 continue;
             }
 
-            if (std::isdigit(ch) || ch == '.' || (ch == '-' && (i == 0 || expression[i-1] == '(' || isOperator(std::string(1, expression[i-1]))))) {
+            if (
+                std::isdigit(ch) || ch == '.' || (ch == '-' &&
+                (i == 0 || expression[i-1] == '(' || isOperator(std::string(1, expression[i-1]))))
+            ) {
                 token += ch;
-            }
-            else if (ch == 't' || ch == 'f') {
-                size_t start = i;
+            } else if (std::isalpha(ch)) {
                 while (i < expression.length() && std::isalpha(expression[i])) {
                     token += expression[i];
                     ++i;
                 }
                 --i;
-                tokens.push_back(token);
+                if (token != "true" && token != "false") {
+                    if (external_values.find(token) != external_values.end()) {
+                        tokens.push_back(external_values.at(token));
+                    } else {
+                        throw std::invalid_argument("Unknown variable: " + token);
+                    }
+                } else {
+                    tokens.push_back(token);
+                }
                 token.clear();
-            }
-            else {
+            } else {
                 if (!token.empty()) {
                     tokens.push_back(token);
                     token.clear();
                 }
                 if (ch == '(' || ch == ')') {
                     tokens.emplace_back(1, ch);
-                }
-                else {
+                } else {
                     std::string op;
                     op += ch;
                     if ((ch == '&' || ch == '|' || ch == '=' || ch == '!') && (i + 1 < expression.length())) {
@@ -179,8 +191,7 @@ namespace calculator {
                             op += expression[i + 1];
                             ++i;
                         }
-                    }
-                    else if (ch == '^' && (i + 1 < expression.length()) && expression[i + 1] == '^') {
+                    } else if (ch == '^' && (i + 1 < expression.length()) && expression[i + 1] == '^') {
                         op += expression[i + 1];
                         ++i;
                     }
@@ -191,6 +202,7 @@ namespace calculator {
         if (!token.empty()) {
             tokens.push_back(token);
         }
+
         return tokens;
     }
 
@@ -291,6 +303,7 @@ namespace calculator {
                 if (op == ">") return lhs > rhs;
                 if (op == ">=") return lhs >= rhs;
             }
+            std::cout << op << std::endl;
 
             throw std::invalid_argument("Incorrect operation: " + op);
         }, a, b);

@@ -5,6 +5,7 @@
 #include <vector>
 #include <variant>
 #include <iostream>
+#include <unordered_map>
 #include "../types.h"
 #include <type_traits>
 #include <stdexcept>
@@ -36,14 +37,20 @@ namespace calculator {
         Value multiply(const Value& a, const Value& b);
         Value divide(const Value& a, const Value& b);
 
-        Value evaluate(const std::string& expression);
+        Value evaluate(
+            const std::string& expression,
+            const std::unordered_map<std::string, std::string>& external_values = {}
+        );
     
     private:
-        std::vector<std::string> tokenize(const std::string& expression);
-        int getPrecedence(const std::string& operator_);
-        bool isOperator(const std::string& token);
-        Value applyOperator(const std::string& op, const Value& a, const Value& b);
-        bool applyLogicalOperator(const std::string& op, bool a, bool b);
+        std::vector<std::string> tokenize(
+            const std::string& expression,
+            const std::unordered_map<std::string, std::string>& external_values = {}
+        );
+        static int getPrecedence(const std::string& operator_);
+        static bool isOperator(const std::string& token);
+        static Value applyOperator(const std::string& op, const Value& a, const Value& b);
+        static bool applyLogicalOperator(const std::string& op, bool a, bool b);
     };
 
 } // calculator

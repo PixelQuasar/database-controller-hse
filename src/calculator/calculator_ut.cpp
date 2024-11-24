@@ -108,6 +108,17 @@ TEST_F(CalculatorTest, DeeplyNestedParentheses) {
     EXPECT_DOUBLE_EQ(safeGet<double>(calc.evaluate("((((1 + 2) * 3) - 4) / 2) + (5 * (6 - (7 + 8)))")), ((((1 + 2) * 3) - 4) / 2) + (5 * (6 - (7 + 8))));
 }
 
+TEST_F(CalculatorTest, ExternalValues) {
+    std::unordered_map<std::string, std::string> values = {
+        {"a", "5"},
+        {"b", "3"}
+    };
+    EXPECT_EQ(safeGet<int>(calc.evaluate("a + b", values)), 8);
+    EXPECT_EQ(safeGet<int>(calc.evaluate("a * b", values)), 15);
+    EXPECT_EQ(safeGet<int>(calc.evaluate("a - b", values)), 2);
+    EXPECT_EQ(safeGet<int>(calc.evaluate("a / b", values)), 1);
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
