@@ -20,7 +20,7 @@ namespace database {
                 std::vector<DBType> row;
                 calculator::Calculator calc;
                 const auto &table = m_database.getTable(insertStmt->tableName);
-                const auto &columns = table.getColumns();
+                const auto &columns = table.get_scheme();
 
                 if (insertStmt->values.size() != columns.size()) {
                     throw std::runtime_error("Number of values does not match number of columns.");
@@ -50,16 +50,14 @@ namespace database {
             } else if (const auto *insertStmt = dynamic_cast<const SelectStatement *>(&stmt)) {
                 //auto table = m_database.getTable(insertStmt->tableName);
 
-                Table table("mock_table", {"id", "name"}, {4, 10});
+//                auto filter_predicate = [](const std::vector<DBType>& row){
+//                    std::unordered_map<std::string, DBType> row_values = {};
+//                    for (const auto& [key, value] : table) {
+//                        row_values
+//                    }
+//                };
 
-                auto filter_predicate = [](const std::vector<DBType>& row){
-                    std::unordered_map<std::string, DBType> row_values = {};
-                    for (const auto& [key, value] : table) {
-                        row_values
-                    }
-                };
-
-                filter_predicate({});
+                //filter_predicate({});
 
             } else {
                 throw std::runtime_error("Unsupported SQL statement.");
@@ -69,4 +67,5 @@ namespace database {
         }
         return result;
     }
+
 } // namespace database

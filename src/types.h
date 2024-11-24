@@ -16,7 +16,8 @@ namespace database {
     using ResultRowType = std::unordered_map<std::string, DBType>;
 
     using RowType = std::vector<DBType>;
+
+    using RowType = std::vector<DBType>;
 } //database
 
 #endif //DATABASE_CONTROLLER_HSE_TYPES_H
-

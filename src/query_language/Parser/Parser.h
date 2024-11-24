@@ -22,7 +22,6 @@ namespace database {
 
         void skipWhitespace();
         std::string parseIdentifier();
-        std::string parseToken();
         bool matchKeyword(const std::string& keyword);
         bool isEnd() const;
 
