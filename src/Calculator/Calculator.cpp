@@ -309,4 +309,4 @@ namespace calculator {
         }, a, b);
     }
 
-} // calculator
+} // Calculator

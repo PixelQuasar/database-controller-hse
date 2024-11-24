@@ -53,6 +53,6 @@ namespace calculator {
         static bool applyLogicalOperator(const std::string& op, bool a, bool b);
     };
 
-} // calculator
+} // Calculator
 
 #endif //DATABASE_CONTROLLER_HSE_CALCULATOR_H
