@@ -21,6 +21,10 @@ namespace database {
         std::unique_ptr<SelectStatement> parseSelect();
 
         void skipWhitespace();
+        bool matchCharacter(char expected);
+        bool hasInvalidEquals(const std::string& expr);
+        std::string trim(const std::string& s);
+        bool isBooleanLiteral(const std::string& expr);
         std::string parseIdentifier();
         std::string parseToken();
         bool matchKeyword(const std::string& keyword);
@@ -28,6 +32,9 @@ namespace database {
 
         std::string sql_;
         size_t pos_;
+
+        std::string parseStringLiteral();
+        std::string parseExpression();
     };
 
 } // namespace database

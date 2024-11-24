@@ -1,7 +1,9 @@
 #include "Parser.h"
 #include <algorithm>
 #include <iostream>
-#include <cctype>\
+#include <cctype>
+#include <stdexcept>
+#include <locale>
 
 namespace database {
 
@@ -80,7 +82,6 @@ namespace database {
                 else if (matchKeyword("KEY")) {
                     column.isUnique = true;
                     column.isKey = true;
-                    std::cerr << "Parsed KEY for column: " << column.name << std::endl;
                 }
                 else {
                     std::string unknownAttr = parseIdentifier();
@@ -112,118 +113,126 @@ namespace database {
         std::string tableName = parseIdentifier();
         skipWhitespace();
 
-        if (!matchKeyword("VALUES")) {
-            throw std::runtime_error("Expected VALUES after table name.");
-        }
-        skipWhitespace();
-
-        if (pos_ >= sql_.size() || sql_[pos_] != '(') {
-            throw std::runtime_error("Expected '(' after VALUES.");
-        }
-        pos_++;
-        skipWhitespace();
-
         auto insertStmt = std::make_unique<InsertStatement>();
         insertStmt->tableName = tableName;
 
-        while (pos_ < sql_.size()) {
+        if (matchKeyword("VALUES")) {
             skipWhitespace();
 
-            std::string value;
-
-            if (sql_[pos_] == '"') {
-                value += '"';
-                pos_++;
-                while (pos_ < sql_.size()) {
-                    if (sql_[pos_] == '\\' && pos_ + 1 < sql_.size() && sql_[pos_ + 1] == '"') {
-                        value += '\"';
-                        pos_ += 2;
-                    }
-                    else if (sql_[pos_] == '"') {
-                        value += '"';
-                        pos_++;
-                        break;
-                    }
-                    else {
-                        value += sql_[pos_++];
-                    }
-                }
-                if (value.back() != '"') {
-                    throw std::runtime_error("Unterminated string literal.");
-                }
-                insertStmt->values.push_back(value);
+            if (pos_ >= sql_.size() || sql_[pos_] != '(') {
+                throw std::runtime_error("Expected '(' after VALUES.");
             }
-            else {
-                std::string expr;
-                int localBracketCount = 0;
-                while (pos_ < sql_.size()) {
-                    char ch = sql_[pos_];
-                    if (ch == '(') {
-                        localBracketCount++;
-                    }
-                    else if (ch == ')') {
-                        if (localBracketCount > 0) {
-                            localBracketCount--;
-                        }
-                        else {
-                            break;
-                        }
-                    }
-                    else if (ch == ',' && localBracketCount == 0) {
-                        break;
-                    }
-
-                    expr += ch;
-                    pos_++;
-                }
-
-                size_t start = expr.find_first_not_of(" \t\n\r");
-                size_t end = expr.find_last_not_of(" \t\n\r");
-                if (start != std::string::npos && end != std::string::npos) {
-                    expr = expr.substr(start, end - start +1);
-                }
-                else {
-                    expr = "";
-                }
-
-                if (expr.empty()) {
-                    throw std::runtime_error("Empty value in INSERT-query.");
-                }
-                insertStmt->values.push_back(expr);
-            }
-
+            pos_++;
             skipWhitespace();
 
-            if (pos_ < sql_.size()) {
-                if (sql_[pos_] == ',') {
-                    pos_++;
-                    continue;
-                }
-                else if (sql_[pos_] == ')') {
+            std::vector<std::string> values;
+            while (pos_ < sql_.size()) {
+                skipWhitespace();
+                
+                if (sql_[pos_] == ')') {
                     pos_++;
                     break;
                 }
-                else {
-                    throw std::runtime_error("Expected ',' or ')' in INSERT-query. Current position: " + std::to_string(pos_) + ", symbol: '" + std::string(1, sql_[pos_]) + "'");
+
+                std::string value;
+                if (sql_[pos_] == '"') {
+                    value = parseStringLiteral();
+                } else {
+                    value = parseExpression();
                 }
+                
+                values.push_back(value);
+                
+                skipWhitespace();
+                if (sql_[pos_] == ',') {
+                    pos_++;
+                    skipWhitespace();
+                    if (sql_[pos_] == ')') {
+                        throw std::runtime_error("Expected value after comma in VALUES clause");
+                    }
+                    continue;
+                }
+                if (sql_[pos_] == ')') {
+                    pos_++;
+                    break;
+                }
+                throw std::runtime_error("Expected ',' or ')' after value in VALUES clause");
             }
-            else {
-                throw std::runtime_error("Unexpected end of input: missing ',' or ')'.");
+
+            insertStmt->values = values;
+        } else {
+            if (pos_ >= sql_.size() || sql_[pos_] != '(') {
+                throw std::runtime_error("Expected '(' after table name");
+            }
+            pos_++;
+            skipWhitespace();
+
+            bool firstColumn = true;
+            while (pos_ < sql_.size()) {
+                skipWhitespace();
+                
+                if (sql_[pos_] == ')') {
+                    pos_++;
+                    break;
+                }
+
+                if (!firstColumn) {
+                    if (sql_[pos_ - 1] != ',') {
+                        throw std::runtime_error("Expected ',' between column assignments");
+                    }
+                }
+
+                std::string columnName = parseIdentifier();
+                skipWhitespace();
+
+                if (pos_ >= sql_.size() || sql_[pos_] != '=') {
+                    throw std::runtime_error("Expected '=' after column name: " + columnName);
+                }
+                pos_++;
+                skipWhitespace();
+
+                std::string value;
+                if (sql_[pos_] == '"') {
+                    value = parseStringLiteral();
+                } else {
+                    value = parseExpression();
+                    if (!value.empty() && 
+                        value != "true" && 
+                        value != "false" && 
+                        !std::all_of(value.begin(), value.end(), [](char c) {
+                            return std::isdigit(c) || c == '.' || c == '+' || c == '-' || 
+                                   c == '*' || c == '/' || c == '(' || c == ')' || 
+                                   std::isspace(c);
+                        })) {
+                        throw std::runtime_error("String value must be enclosed in quotes: " + value);
+                    }
+                }
+
+                insertStmt->columnValuePairs[columnName] = value;
+                firstColumn = false;
+
+                skipWhitespace();
+                if (sql_[pos_] == ',') {
+                    pos_++;
+                    skipWhitespace();
+                    if (!std::isalpha(sql_[pos_]) && sql_[pos_] != '_') {
+                        throw std::runtime_error("Expected column name after comma");
+                    }
+                    continue;
+                }
+                if (sql_[pos_] == ')') {
+                    pos_++;
+                    break;
+                }
+                throw std::runtime_error("Expected ',' or ')' after value");
             }
         }
 
         skipWhitespace();
-
         if (pos_ >= sql_.size() || sql_[pos_] != ';') {
-            throw std::runtime_error("Unexpected end of input: missing ';'.");
+            throw std::runtime_error("Expected ';' at end of INSERT statement");
         }
         pos_++;
-
-        skipWhitespace();
-
-        if (!isEnd()) {
-            throw std::runtime_error("Extra symbols after ';'.");
-        }
 
         return insertStmt;
     }
@@ -247,16 +256,15 @@ namespace database {
         }
 
         std::string tableName = parseIdentifier();
-
         selectStmt->tableName = tableName;
 
         skipWhitespace();
 
         if (matchKeyword("WHERE")) {
             std::string predicate;
-            std::string current_token = parseIdentifier();
+            std::string current_token = parseToken();
 
-            while (sql_[pos_] != ';') {
+            while (pos_ < sql_.size() && sql_[pos_] != ';') {
                 predicate += current_token + " ";
                 current_token = parseToken();
             }
@@ -330,8 +338,80 @@ namespace database {
         return false;
     }
 
+    bool Parser::matchCharacter(char expected) {
+        if (pos_ < sql_.size() && sql_[pos_] == expected) {
+            pos_++;
+            skipWhitespace();
+            return true;
+        }
+        return false;
+    }
+
     bool Parser::isEnd() const {
         return pos_ >= sql_.size();
+    }
+
+    std::string Parser::trim(const std::string& s) {
+        size_t start = 0;
+        while (start < s.size() && std::isspace(static_cast<unsigned char>(s[start]))) {
+            start++;
+        }
+
+        if (start == s.size()) {
+            return "";
+        }
+
+        size_t end = s.size() - 1;
+        while (end > start && std::isspace(static_cast<unsigned char>(s[end]))) {
+            end--;
+        }
+
+        return s.substr(start, end - start + 1);
+    }
+
+    bool Parser::isBooleanLiteral(const std::string& expr) {
+        return expr == "true" || expr == "false";
+    }
+
+    std::string Parser::parseStringLiteral() {
+        std::string value = "\"";
+        pos_++;
+        
+        while (pos_ < sql_.size() && sql_[pos_] != '"') {
+            if (sql_[pos_] == '\\' && pos_ + 1 < sql_.size()) {
+                value += sql_[pos_++];
+            }
+            value += sql_[pos_++];
+        }
+        
+        if (pos_ >= sql_.size() || sql_[pos_] != '"') {
+            throw std::runtime_error("Unterminated string literal");
+        }
+        
+        value += '"';
+        pos_++;
+        return value;
+    }
+
+    std::string Parser::parseExpression() {
+        std::string value;
+        int brackets = 0;
+        
+        while (pos_ < sql_.size()) {
+            char c = sql_[pos_];
+            
+            if (c == '(') brackets++;
+            else if (c == ')') {
+                if (brackets == 0) break;
+                brackets--;
+            }
+            else if (brackets == 0 && c == ',') break;
+            
+            value += c;
+            pos_++;
+        }
+        
+        return trim(value);
     }
 
 } // namespace database
