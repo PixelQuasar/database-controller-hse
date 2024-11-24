@@ -177,7 +177,13 @@ namespace database {
                 }
 
                 if (!firstColumn) {
-                    if (sql_[pos_ - 1] != ',') {
+                    
+                    size_t lastNonSpace = pos_ - 1;
+                    while (lastNonSpace > 0 && std::isspace(sql_[lastNonSpace])) {
+                        lastNonSpace--;
+                    }
+                    
+                    if (sql_[lastNonSpace] != ',') {
                         throw std::runtime_error("Expected ',' between column assignments");
                     }
                 }
