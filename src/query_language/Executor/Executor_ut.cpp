@@ -128,7 +128,6 @@ TEST_F(ExecutorTest, ExecuteComplexInsert) {
 }
 
 TEST_F(ExecutorTest, ComplexScenario) {
-    // Создаем таблицу со множеством колонок разных типов
     auto createStmt = Parser::parse(
         "CREATE TABLE Employees ("
         "    ID INT,"

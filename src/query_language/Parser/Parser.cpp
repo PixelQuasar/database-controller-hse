@@ -89,12 +89,12 @@ namespace database {
         skipWhitespace();
 
         if (!matchKeyword("VALUES")) {
-            throw std::runtime_error("Ожидалось VALUES после названия таблицы.");
+            throw std::runtime_error("Expected VALUES after table name.");
         }
         skipWhitespace();
 
         if (pos_ >= sql_.size() || sql_[pos_] != '(') {
-            throw std::runtime_error("Ожидалась '(' после VALUES.");
+            throw std::runtime_error("Expected '(' after VALUES.");
         }
         pos_++;
         skipWhitespace();
@@ -125,7 +125,7 @@ namespace database {
                     }
                 }
                 if (value.back() != '"') {
-                    throw std::runtime_error("Незавершённый строковый литерал.");
+                    throw std::runtime_error("Unterminated string literal.");
                 }
                 insertStmt->values.push_back(value);
             }
