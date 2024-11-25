@@ -7,6 +7,7 @@
 #include <iostream>
 #include <memory>
 #include <unordered_set>
+
 #include "../../Calculator/Calculator.h"
 #include "../../database/Database/Database.h"
 #include "../AST/SQLStatement.h"
@@ -17,7 +18,7 @@ class Executor {
    public:
     Executor(Database& database) : m_database(database) {}
 
-        Result execute(std::shared_ptr<SQLStatement> stmt);
+    Result execute(std::shared_ptr<SQLStatement> stmt);
 
    private:
     Database& m_database;

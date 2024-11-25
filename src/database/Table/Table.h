@@ -5,15 +5,16 @@
 #ifndef DATABASE_CONTROLLER_HSE_TABLE_H
 #define DATABASE_CONTROLLER_HSE_TABLE_H
 
+#include <cstring>
 #include <functional>
 #include <iostream>
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
-#include <cstring>
-#include "../../types.h"
+
 #include "../../query_language/AST/SQLStatement.h"
+#include "../../types.h"
 
 namespace database {
 class Table {
@@ -57,9 +58,7 @@ class Table {
     void remove_many(
         const std::function<bool(const std::vector<DBType>&)>& predicate);
 
-    void drop_rows() {
-        rows_ = {};
-    }
+    void drop_rows() { rows_ = {}; }
 
     std::string convert_to_byte_buffer();
 
