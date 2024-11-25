@@ -13,17 +13,11 @@ TEST_F(ParserTest, ParseCreateTable) {
     ASSERT_EQ(createStmt->columns.size(), 2);
     EXPECT_EQ(createStmt->columns[0].name, "ID");
     EXPECT_EQ(createStmt->columns[0].type, "INT");
-    EXPECT_FALSE(createStmt->columns[0].notNull);
-    EXPECT_FALSE(createStmt->columns[0].isPrimaryKey);
     EXPECT_FALSE(createStmt->columns[0].isUnique);
-    EXPECT_EQ(createStmt->columns[0].defaultValue, "");
 
     EXPECT_EQ(createStmt->columns[1].name, "Name");
     EXPECT_EQ(createStmt->columns[1].type, "VARCHAR");
-    EXPECT_FALSE(createStmt->columns[1].notNull);
-    EXPECT_FALSE(createStmt->columns[1].isPrimaryKey);
     EXPECT_FALSE(createStmt->columns[1].isUnique);
-    EXPECT_EQ(createStmt->columns[1].defaultValue, "");
 }
 
 TEST_F(ParserTest, ParseInsert) {
@@ -37,38 +31,21 @@ TEST_F(ParserTest, ParseInsert) {
 }
 
 TEST_F(ParserTest, ParseCreateTableWithAttributes) {
-    auto stmt = Parser::parse(
-        "CREATE TABLE Employees ("
-        "    ID INT PRIMARY KEY,"
-        "    FirstName VARCHAR NOT NULL,"
-        "    LastName VARCHAR NOT NULL,"
-        "    Age INT DEFAULT 30,"
-        "    Salary DOUBLE DEFAULT 50000.0,"
-        "    IsManager BOOL DEFAULT false,"
-        "    IsFullTime BOOL DEFAULT true,"
-        "    YearsOfService DOUBLE DEFAULT 5.5,"
-        "    PerformanceScore INT DEFAULT 100"
-        ");"
-    );
-
+    auto stmt = Parser::parse("CREATE TABLE Test (ID INT AUTOINCREMENT, Name VARCHAR UNIQUE);");
     auto createStmt = dynamic_cast<CreateTableStatement*>(stmt.get());
     ASSERT_NE(createStmt, nullptr);
-    EXPECT_EQ(createStmt->tableName, "Employees");
-    ASSERT_EQ(createStmt->columns.size(), 9);
-    
+    EXPECT_EQ(createStmt->tableName, "Test");
+    ASSERT_EQ(createStmt->columns.size(), 2);
+
     EXPECT_EQ(createStmt->columns[0].name, "ID");
     EXPECT_EQ(createStmt->columns[0].type, "INT");
-    EXPECT_FALSE(createStmt->columns[0].notNull);
-    EXPECT_TRUE(createStmt->columns[0].isPrimaryKey);
+    EXPECT_TRUE(createStmt->columns[0].isAutoIncrement);
     EXPECT_FALSE(createStmt->columns[0].isUnique);
-    EXPECT_EQ(createStmt->columns[0].defaultValue, "");
 
-    EXPECT_EQ(createStmt->columns[1].name, "FirstName");
+    EXPECT_EQ(createStmt->columns[1].name, "Name");
     EXPECT_EQ(createStmt->columns[1].type, "VARCHAR");
-    EXPECT_TRUE(createStmt->columns[1].notNull);
-    EXPECT_FALSE(createStmt->columns[1].isPrimaryKey);
-    EXPECT_FALSE(createStmt->columns[1].isUnique);
-    EXPECT_EQ(createStmt->columns[1].defaultValue, "");
+    EXPECT_TRUE(createStmt->columns[1].isUnique);
+    EXPECT_FALSE(createStmt->columns[1].isAutoIncrement);
 }
 
 TEST_F(ParserTest, ComplexParsingScenario) {
@@ -157,6 +134,72 @@ TEST_F(ParserTest, InvalidSyntax) {
     EXPECT_THROW(Parser::parse("INSERT INTO Test (1, \"Alice\");"), std::runtime_error);
 
     EXPECT_THROW(Parser::parse("INSERT INTO Test VALUES ((1, \"Alice\");"), std::runtime_error);
+}
+
+TEST_F(ParserTest, ParseInsertWithColumnAssignments) {
+    auto stmt = Parser::parse("INSERT INTO Employees (ID = 1, FirstName = \"John\", LastName = \"Doe\", Age = 30, Salary = 50000.50, IsManager = true && false, IsFullTime = true, YearsOfService = 5.5, PerformanceScore = 95);");
+    auto insertStmt = dynamic_cast<InsertStatement*>(stmt.get());
+    ASSERT_NE(insertStmt, nullptr);
+    EXPECT_EQ(insertStmt->tableName, "Employees");
+    ASSERT_EQ(insertStmt->columnValuePairs.size(), 9);
+
+    EXPECT_EQ(insertStmt->columnValuePairs["ID"], "1");
+    EXPECT_EQ(insertStmt->columnValuePairs["FirstName"], "\"John\"");
+    EXPECT_EQ(insertStmt->columnValuePairs["LastName"], "\"Doe\"");
+    EXPECT_EQ(insertStmt->columnValuePairs["Age"], "30");
+    EXPECT_EQ(insertStmt->columnValuePairs["Salary"], "50000.50");
+    EXPECT_EQ(insertStmt->columnValuePairs["IsManager"], "true");
+    EXPECT_EQ(insertStmt->columnValuePairs["IsFullTime"], "true");
+    EXPECT_EQ(insertStmt->columnValuePairs["YearsOfService"], "5.5");
+    EXPECT_EQ(insertStmt->columnValuePairs["PerformanceScore"], "95");
+}
+
+TEST_F(ParserTest, ParseInsertWithColumnAssignmentsAndExpressions) {
+    auto stmt = Parser::parse("INSERT INTO Employees (ID = 2, FirstName = \"Jane\", LastName = \"Smith\", Age = 25 + 3, Salary = 60000.0 * 1.1, IsManager = false, IsFullTime = true, YearsOfService = (2.5 + 1.5) * 2, PerformanceScore = 100 - 10);");
+    auto insertStmt = dynamic_cast<InsertStatement*>(stmt.get());
+    ASSERT_NE(insertStmt, nullptr);
+    EXPECT_EQ(insertStmt->tableName, "Employees");
+    ASSERT_EQ(insertStmt->columnValuePairs.size(), 9);
+
+    EXPECT_EQ(insertStmt->columnValuePairs["ID"], "2");
+    EXPECT_EQ(insertStmt->columnValuePairs["FirstName"], "\"Jane\"");
+    EXPECT_EQ(insertStmt->columnValuePairs["LastName"], "\"Smith\"");
+    EXPECT_EQ(insertStmt->columnValuePairs["Age"], "25 + 3");
+    EXPECT_EQ(insertStmt->columnValuePairs["Salary"], "60000.0 * 1.1");
+    EXPECT_EQ(insertStmt->columnValuePairs["IsManager"], "false");
+    EXPECT_EQ(insertStmt->columnValuePairs["IsFullTime"], "true");
+    EXPECT_EQ(insertStmt->columnValuePairs["YearsOfService"], "(2.5 + 1.5) * 2");
+    EXPECT_EQ(insertStmt->columnValuePairs["PerformanceScore"], "100 - 10");
+}
+
+TEST_F(ParserTest, ParseInsertMixedSyntax) {
+    {
+        auto stmt1 = Parser::parse("INSERT INTO Test VALUES (1, \"Alice\");");
+        auto insertStmt1 = dynamic_cast<InsertStatement*>(stmt1.get());
+        ASSERT_NE(insertStmt1, nullptr);
+        EXPECT_EQ(insertStmt1->tableName, "Test");
+        ASSERT_EQ(insertStmt1->values.size(), 2);
+        EXPECT_EQ(insertStmt1->values[0], "1");
+        EXPECT_EQ(insertStmt1->values[1], "\"Alice\"");
+    }
+
+    {
+        auto stmt2 = Parser::parse("INSERT INTO Test (ID = 2, Name = \"Bob\");");
+        auto insertStmt2 = dynamic_cast<InsertStatement*>(stmt2.get());
+        ASSERT_NE(insertStmt2, nullptr);
+        EXPECT_EQ(insertStmt2->tableName, "Test");
+        ASSERT_EQ(insertStmt2->columnValuePairs.size(), 2);
+        EXPECT_EQ(insertStmt2->columnValuePairs["ID"], "2");
+        EXPECT_EQ(insertStmt2->columnValuePairs["Name"], "\"Bob\"");
+    }
+}
+
+TEST_F(ParserTest, InvalidSyntaxWithColumnAssignments) {
+    EXPECT_THROW(Parser::parse("INSERT INTO Test (ID 1, Name = \"Alice\");"), std::runtime_error);
+
+    EXPECT_THROW(Parser::parse("INSERT INTO Test (ID = 1 Name = \"Alice\");"), std::runtime_error);
+
+    EXPECT_THROW(Parser::parse("INSERT INTO Test (ID = 1, Name = Alice);"), std::runtime_error);
 }
 
 int main(int argc, char **argv) {

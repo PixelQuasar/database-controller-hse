@@ -35,6 +35,7 @@ namespace database {
     public:
         std::string tableName;
         std::vector<std::string> values;
+        std::unordered_map<std::string, std::string> columnValuePairs;
 
         std::string toString() const override {
             std::string result = "INSERT INTO " + tableName + " VALUES (";

@@ -86,29 +86,25 @@ TEST_F(ExecutorTest, ExecuteInsertWithBoolean) {
 
 TEST_F(ExecutorTest, ExecuteInsertWithInvalidType) {
     auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR);");
-    executor.execute(*createStmt);
-
-    EXPECT_THROW({
-        auto insertStmt = Parser::parse("INSERT INTO Test VALUES (\"Alice\", 1);");
-        executor.execute(*insertStmt);
-    }, std::runtime_error);
+    auto result1 = executor.execute(*createStmt);
+    EXPECT_TRUE(result1.is_ok());
+    auto insertStmt = Parser::parse("INSERT INTO Test VALUES (\"Alice\", 1);");
+    auto result2 = executor.execute(*insertStmt);
+    EXPECT_FALSE(result2.is_ok());
 }
 
 TEST_F(ExecutorTest, ExecuteCreateTableDuplicate) {
     auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR);");
     executor.execute(*createStmt);
-
-    EXPECT_THROW({
-        auto duplicateStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR);");
-        executor.execute(*duplicateStmt);
-    }, std::runtime_error);
+    auto duplicateStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR);");
+    auto result = executor.execute(*duplicateStmt);
+    EXPECT_FALSE(result.is_ok());
 }
 
 TEST_F(ExecutorTest, ExecuteInsertIntoNonExistentTable) {
-    EXPECT_THROW({
-        auto insertStmt = Parser::parse("INSERT INTO NonExistent VALUES (1, \"Alice\");");
-        executor.execute(*insertStmt);
-    }, std::runtime_error);
+    auto insertStmt = Parser::parse("INSERT INTO NonExistent VALUES (1, \"Alice\");");
+    auto result = executor.execute(*insertStmt);
+    EXPECT_FALSE(result.is_ok());
 }
 
 TEST_F(ExecutorTest, ExecuteComplexInsert) {
@@ -207,6 +203,102 @@ TEST_F(ExecutorTest, ComplexScenario) {
     EXPECT_EQ(std::get<int>(data[3][8]), 90);
 }
 
+TEST_F(ExecutorTest, UniqueConstraint) {
+    auto createStmt = Parser::parse("CREATE TABLE Test (ID INT UNIQUE, Name VARCHAR);");
+    executor.execute(*createStmt);
+
+    auto insertStmt1 = Parser::parse("INSERT INTO Test VALUES (1, \"Alice\");");
+    executor.execute(*insertStmt1);
+
+    auto insertStmt2 = Parser::parse("INSERT INTO Test VALUES (1, \"Bob\");");
+    auto result = executor.execute(*insertStmt2);
+    EXPECT_FALSE(result.is_ok());
+
+    auto insertStmt3 = Parser::parse("INSERT INTO Test VALUES (2, \"Charlie\");");
+    auto result2 = executor.execute(*insertStmt3);
+    EXPECT_TRUE(result2.is_ok());
+
+    auto insertStmt4 = Parser::parse("INSERT INTO Test VALUES (2, \"Charlie\");");
+    auto result3 = executor.execute(*insertStmt4);
+    EXPECT_FALSE(result3.is_ok());
+}
+
+TEST_F(ExecutorTest, AutoIncrement) {
+    auto createStmt = Parser::parse("CREATE TABLE Test (ID INT AUTOINCREMENT, Name VARCHAR);");
+    executor.execute(*createStmt);
+
+    auto insertStmt1 = Parser::parse("INSERT INTO Test VALUES (NULL, \"Alice\");");
+    executor.execute(*insertStmt1);
+
+    auto insertStmt2 = Parser::parse("INSERT INTO Test VALUES (NULL, \"Bob\");");
+    executor.execute(*insertStmt2);
+
+    auto insertStmt3 = Parser::parse("INSERT INTO Test VALUES (NULL, \"Charlie\");");
+    executor.execute(*insertStmt3);
+
+    auto insertStmt4 = Parser::parse("INSERT INTO Test VALUES (10, \"David\");");
+    executor.execute(*insertStmt4);
+
+    auto insertStmt5 = Parser::parse("INSERT INTO Test VALUES (NULL, \"Eve\");");
+    executor.execute(*insertStmt5);
+
+    const auto& table = db.getTable("Test");
+    const auto& data = table.get_rows();
+    ASSERT_EQ(data.size(), 5);
+    EXPECT_EQ(std::get<int>(data[0][0]), 0);
+    EXPECT_EQ(std::get<int>(data[1][0]), 1);
+    EXPECT_EQ(std::get<int>(data[2][0]), 2);
+    EXPECT_EQ(std::get<int>(data[3][0]), 10);
+    EXPECT_EQ(std::get<int>(data[4][0]), 3);
+    EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
+    EXPECT_EQ(std::get<std::string>(data[1][1]), "Bob");
+    EXPECT_EQ(std::get<std::string>(data[2][1]), "Charlie");
+    EXPECT_EQ(std::get<std::string>(data[3][1]), "David");
+    EXPECT_EQ(std::get<std::string>(data[4][1]), "Eve");
+}
+
+TEST_F(ExecutorTest, MultipleAutoIncrement) {
+    auto createStmt = Parser::parse("CREATE TABLE Test (ID1 INT AUTOINCREMENT, ID2 INT AUTOINCREMENT, Name VARCHAR);");
+    executor.execute(*createStmt);
+
+    auto insertStmt1 = Parser::parse("INSERT INTO Test VALUES (NULL, NULL, \"Alice\");");
+    executor.execute(*insertStmt1);
+
+    auto insertStmt2 = Parser::parse("INSERT INTO Test VALUES (NULL, NULL, \"Bob\");");
+    executor.execute(*insertStmt2);
+
+    auto insertStmt3 = Parser::parse("INSERT INTO Test VALUES (NULL, NULL, \"Charlie\");");
+    executor.execute(*insertStmt3);
+
+    const auto& table = db.getTable("Test");
+    const auto& data = table.get_rows();
+    ASSERT_EQ(data.size(), 3);
+    EXPECT_EQ(std::get<int>(data[0][0]), 0);
+    EXPECT_EQ(std::get<int>(data[0][1]), 0);
+    EXPECT_EQ(std::get<int>(data[1][0]), 1);
+    EXPECT_EQ(std::get<int>(data[1][1]), 1);
+    EXPECT_EQ(std::get<int>(data[2][0]), 2);
+    EXPECT_EQ(std::get<int>(data[2][1]), 2);
+    EXPECT_EQ(std::get<std::string>(data[0][2]), "Alice");
+    EXPECT_EQ(std::get<std::string>(data[1][2]), "Bob");
+    EXPECT_EQ(std::get<std::string>(data[2][2]), "Charlie");
+}
+
+TEST_F(ExecutorTest, KeyConstraint) {
+    auto createStmt = Parser::parse("CREATE TABLE Test (ID INT KEY, Name VARCHAR);");
+    executor.execute(*createStmt);
+
+    auto insertStmt1 = Parser::parse("INSERT INTO Test VALUES (1, \"Alice\");");
+    executor.execute(*insertStmt1);
+
+    auto insertStmt2 = Parser::parse("INSERT INTO Test VALUES (1, \"Bob\");");
+    auto result = executor.execute(*insertStmt2);
+    EXPECT_FALSE(result.is_ok());
+
+    auto insertStmt3 = Parser::parse("INSERT INTO Test VALUES (2, \"Charlie\");");
+    auto result2 = executor.execute(*insertStmt3);
+    EXPECT_TRUE(result2.is_ok());
+}
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

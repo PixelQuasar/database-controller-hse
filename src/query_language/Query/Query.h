@@ -55,10 +55,6 @@ namespace database {
 
             m_query_type = query_templates.at(key_words);
 
-            std::cout << key_words << std::endl;
-            for (const auto& param : raw_params) {
-                std::cout << param << std::endl;
-            }
         }
 
         QueryType get_query_type() {

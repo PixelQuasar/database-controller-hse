@@ -7,10 +7,20 @@
 namespace database {
 
     void Database::createTable(const std::string& name, const SchemeType& columns) {
+
         if (tables_.find(name) != tables_.end()) {
             throw std::runtime_error("Table already exists: " + name);
         }
-        tables_.emplace(name, Table(name, columns));
+
+        Table table(name, columns);
+
+        for (const auto& column : columns) {
+            if (column.isUnique) {
+                table.addUniqueConstraint(column.name);
+            }
+        }
+
+        tables_.emplace(name, std::move(table));
     }
 
     void Database::insertInto(const std::string& tableName, const RowType& values) {

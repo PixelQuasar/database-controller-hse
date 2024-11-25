@@ -36,28 +36,39 @@ namespace database {
                 const auto &table = m_database.getTable(insertStmt->tableName);
                 const auto &columns = table.get_scheme();
 
-                if (insertStmt->values.size() != columns.size()) {
-                    throw std::runtime_error("Number of values does not match number of columns.");
+                if (insertStmt->values.size() > columns.size()) {
+                    throw std::runtime_error("Too many values provided.");
                 }
 
-                for (size_t i = 0; i < insertStmt->values.size(); ++i) {
-                    const auto &valStr = insertStmt->values[i];
+                for (size_t i = 0; i < columns.size(); ++i) {
                     const auto &columnType = columns[i].type;
 
                     try {
-                        auto calc_result = calc.evaluate(valStr);
+                        DBType value;
+                        
+                        if (i < insertStmt->values.size()) {
+                            if (insertStmt->values[i] == "NULL" && columns[i].isAutoIncrement) {
+                                value = 0;
+                            } else {
+                                value = calc.evaluate(insertStmt->values[i]);
+                            }
+                        } else if (columns[i].isAutoIncrement) {
+                            value = 0;
+                        } else {
+                            throw std::runtime_error("No value provided for column " + columns[i].name);
+                        }
 
-                        if ((columnType == "INT" && !std::holds_alternative<int>(calc_result)) ||
-                            (columnType == "DOUBLE" && !std::holds_alternative<double>(calc_result)) ||
-                            (columnType == "BOOL" && !std::holds_alternative<bool>(calc_result)) ||
-                            (columnType == "VARCHAR" && !std::holds_alternative<std::string>(calc_result))) {
+                        if ((columnType == "INT" && !std::holds_alternative<int>(value)) ||
+                            (columnType == "DOUBLE" && !std::holds_alternative<double>(value)) ||
+                            (columnType == "BOOL" && !std::holds_alternative<bool>(value)) ||
+                            (columnType == "VARCHAR" && !std::holds_alternative<std::string>(value))) {
                             throw std::runtime_error("Type mismatch for column " + columns[i].name);
                         }
 
-                        row.push_back(calc_result);
+                        row.push_back(value);
                     } catch (const std::exception &e) {
                         throw std::runtime_error("Error processing value for column " +
-                                                 columns[i].name + ": " + e.what());
+                                               columns[i].name + ": " + e.what());
                     }
                 }
                 m_database.insertInto(insertStmt->tableName, row);

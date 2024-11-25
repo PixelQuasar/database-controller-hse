@@ -16,13 +16,10 @@ namespace database {
         std::string name;
         std::string type;
         bool notNull = false;
-        bool isPrimaryKey = false;
         bool isUnique = false;
+        bool isKey = false;
         std::string defaultValue;
-        bool isForeignKey = false;
-        std::string referencesTable;
-        std::string referencesColumn;
-        std::string checkCondition;
+        bool isAutoIncrement = false;
 
         std::string toString() const {
             return name + " " + type;

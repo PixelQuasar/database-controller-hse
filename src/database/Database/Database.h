@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 #include <stdexcept>
+#include <iostream>
 #include "../Table/Table.h"
 
 namespace database {
