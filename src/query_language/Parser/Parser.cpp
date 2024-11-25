@@ -78,12 +78,6 @@ std::unordered_map<std::string, std::string> Parser::parseAssignValues() {
     return columnValuePairs;
 }
 
-std::unordered_map<std::string, std::string> Parser::parseAssign(
-    const std::string& sql) {
-    Parser parser(sql);
-    return parser.parseAssignValues();
-}
-
 std::shared_ptr<SQLStatement> Parser::parseStatement() {
     skipWhitespace();
     if (matchKeyword("CREATE")) {

@@ -31,18 +31,6 @@ namespace database {
         return str_value;
     }
 
-    std::string Table::convert_to_byte_buffer() {
-        std::string buffer;
-        for (auto& row : rows_) {
-            int current_column_index = 0;
-            for (auto& cell : row) {
-                union {
-                    int intValue;
-                    double doubleValue;
-                    bool boolValue;
-                    char charArray4[4];
-                    char charArray8[8];
-                } converter {};
 std::string Table::convert_to_byte_buffer() {
     std::string buffer;
     for (auto& row : rows_) {
@@ -193,10 +181,10 @@ void Table::insert_row(RowType row) {
             }
 
             if (scheme_[i].isKey) {
-                if (indixes_[scheme_[i].name].count(row[i])) {
+                if (indexes_[scheme_[i].name].count(row[i])) {
                     throw std::runtime_error("Key constraint violated for column: " + scheme_[i].name);
                 }
-                indixes_[scheme_[i].name].insert(row[i]);
+                indexes_[scheme_[i].name].insert(row[i]);
             }
         }
 
