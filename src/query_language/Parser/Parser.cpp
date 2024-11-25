@@ -5,6 +5,7 @@
 #include <iostream>
 #include <locale>
 #include <stdexcept>
+#include <sstream>
 
 namespace database {
 
@@ -18,39 +19,44 @@ Parser::Parser(const std::string& sql) : sql_(sql), pos_(0) {}
 std::unordered_map<std::string, std::string> Parser::parseAssignValues() {
     std::unordered_map<std::string, std::string> columnValuePairs;
     bool firstColumn = true;
+    std::cout << "Starting parseAssignValues at pos: " << pos_ << ", char: '" << sql_[pos_] << "'\n";
+    
     while (pos_ < sql_.size()) {
         skipWhitespace();
+        std::cout << "After skipWhitespace, pos: " << pos_ << ", char: '" << sql_[pos_] << "'\n";
 
         if (sql_[pos_] == ')') {
+            std::cout << "Found closing parenthesis, breaking\n";
             pos_++;
             break;
         }
 
         std::string columnName = parseIdentifier();
+        std::cout << "Parsed column name: " << columnName << "\n";
         skipWhitespace();
 
         if (pos_ >= sql_.size() || sql_[pos_] != '=') {
-            throw std::runtime_error("Expected '=' after column name: " +
-                                     columnName);
+            throw std::runtime_error("Expected '=' after column name: " + columnName);
         }
         pos_++;
         skipWhitespace();
+        std::cout << "Before parsing value at pos: " << pos_ << ", char: '" << sql_[pos_] << "'\n";
 
-        std::string value;
-        if (sql_[pos_] == '"') {
-            value = parseStringLiteral();
-        } else {
-            value = parseExpression();
-        }
+        // Убираем проверку на кавычки и всегда используем parseExpression
+        std::string value = parseExpression();
+        std::cout << "Parsed value: " << value << "\n";
 
         columnValuePairs[columnName] = value;
         firstColumn = false;
 
         skipWhitespace();
+        std::cout << "After value, at pos: " << pos_ << ", char: '" << sql_[pos_] << "'\n";
+        
         if (pos_ >= sql_.size()) {
             throw std::runtime_error("Unexpected end of input after value");
         }
         if (sql_[pos_] == ',') {
+            std::cout << "Found comma, continuing\n";
             pos_++;
             skipWhitespace();
             if (pos_ >= sql_.size() ||
@@ -60,6 +66,7 @@ std::unordered_map<std::string, std::string> Parser::parseAssignValues() {
             continue;
         }
         if (sql_[pos_] == ')') {
+            std::cout << "Found closing parenthesis, breaking\n";
             pos_++;
             break;
         }
@@ -460,27 +467,52 @@ std::string Parser::parseStringLiteral() {
 std::string Parser::parseExpression() {
     std::string value;
     int brackets = 0;
+    std::cout << "Starting parseExpression at pos: " << pos_ << ", char: '" << sql_[pos_] << "'\n";
 
     skipWhitespace();
     if (sql_[pos_] == ',' || sql_[pos_] == ')') {
+        std::cout << "Found immediate terminator, returning empty string\n";
         return "";
     }
 
+    bool expectingMore = false;
     while (pos_ < sql_.size()) {
         char c = sql_[pos_];
+        std::cout << "Processing char: '" << c << "' at pos: " << pos_ << ", brackets: " << brackets << "\n";
+        
+        if (c == '"') {
+            value += parseStringLiteral();
+            expectingMore = false;
+            continue;
+        }
+
         if (c == '(') {
             brackets++;
         } else if (c == ')') {
-            if (brackets == 0) break;
+            if (brackets == 0) {
+                std::cout << "Found unmatched closing bracket, breaking\n";
+                break;
+            }
             brackets--;
-        } else if (brackets == 0 && (c == ',' || c == ')')) {
+        } else if (brackets == 0 && c == ',' && !expectingMore) {
+            std::cout << "Found comma with no open brackets, breaking\n";
             break;
+        } else if (brackets == 0 && c == ')' && !expectingMore) {
+            std::cout << "Found closing paren with no open brackets, breaking\n";
+            break;
+        }
+
+        if (c == '+' || c == '-' || c == '*' || c == '/' || c == '&' || c == '|') {
+            expectingMore = true;
+        } else if (!std::isspace(c)) {
+            expectingMore = false;
         }
 
         value += c;
         pos_++;
     }
     value = trim(value);
+    std::cout << "Finished parseExpression, value: '" << value << "', pos: " << pos_ << "\n";
     return value;
 }
 
