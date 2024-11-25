@@ -98,6 +98,22 @@ namespace database {
         }
     };
 
+    class DeleteStatement : public SQLStatement {
+    public:
+        std::string tableName;
+        std::string predicate;
+
+        std::string toString() const override {
+            std::string result = "DELETE FROM " + tableName;
+            if (!predicate.empty()) {
+                result += " WHERE " + predicate;
+            }
+            result += ";";
+            return result;
+        }
+
+    };
+
 } // namespace database
 
 #endif // DATABASE_CONTROLLER_HSE_SQLSTATEMENT_H 

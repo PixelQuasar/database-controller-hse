@@ -20,6 +20,7 @@ namespace database {
         std::shared_ptr<InsertStatement> parseInsert();
         std::shared_ptr<SelectStatement> parseSelect();
         std::shared_ptr<UpdateStatement> parseUpdate();
+        std::shared_ptr<DeleteStatement> parseDelete();
         std::unordered_map<std::string, std::string> parseAssignValues();
 
         void skipWhitespace();
