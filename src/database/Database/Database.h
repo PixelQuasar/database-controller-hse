@@ -4,25 +4,26 @@
 #ifndef DATABASE_CONTROLLER_HSE_DATABASE_H
 #define DATABASE_CONTROLLER_HSE_DATABASE_H
 
+#include <iostream>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <stdexcept>
-#include <iostream>
+
 #include "../Table/Table.h"
 
 namespace database {
 
-    class Database {
-    public:
-        void createTable(const std::string& name, const SchemeType& columns);
-        void insertInto(const std::string& tableName, const RowType& values);
-        const Table& getTable(const std::string& name) const;
+class Database {
+   public:
+    void createTable(const std::string& name, const SchemeType& columns);
+    void insertInto(const std::string& tableName, const RowType& values);
+    Table& getTable(const std::string& name);
 
-    private:
-        std::unordered_map<std::string, Table> tables_;
-    };
+   private:
+    std::unordered_map<std::string, Table> tables_;
+};
 
-} // namespace database
+}  // namespace database
 
-#endif // DATABASE_CONTROLLER_HSE_DATABASE_H
+#endif  // DATABASE_CONTROLLER_HSE_DATABASE_H

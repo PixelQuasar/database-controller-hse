@@ -85,11 +85,6 @@ std::unordered_map<std::string, std::string> Parser::parseAssignValues() {
     return columnValuePairs;
 }
 
-std::unordered_map<std::string, std::string> Parser::parseAssign(const std::string& sql) {
-    Parser parser(sql);
-    return parser.parseAssignValues();
-}
-
 std::unique_ptr<SQLStatement> Parser::parseStatement() {
     skipWhitespace();
     if (matchKeyword("CREATE")) {
@@ -104,6 +99,8 @@ std::unique_ptr<SQLStatement> Parser::parseStatement() {
         return parseInsert();
     } else if (matchKeyword("SELECT")) {
         return parseSelect();
+    } else if (matchKeyword("UPDATE")) {
+        return parseUpdate();
     } else {
         throw std::runtime_error("Unsupported SQL statement.");
     }
@@ -273,6 +270,36 @@ std::unique_ptr<SelectStatement> Parser::parseSelect() {
     std::string tableName = parseIdentifier();
     selectStmt->tableName = tableName;
 
+    skipWhitespace();
+
+    if (matchKeyword("WHERE")) {
+        std::string predicate;
+        std::string current_token = parseToken();
+
+        while (pos_ < sql_.size() && sql_[pos_] != ';') {
+            predicate += current_token + " ";
+            current_token = parseToken();
+        }
+        predicate += current_token;
+        selectStmt->predicate = predicate;
+    }
+
+    return selectStmt;
+}
+
+std::unique_ptr<UpdateStatement> Parser::parseUpdate() {
+    auto selectStmt = std::make_unique<UpdateStatement>();
+    skipWhitespace();
+
+    selectStmt->tableName = parseIdentifier();
+
+    if (!matchKeyword("SET")) {
+        throw std::runtime_error(
+            "Expected SET after table name in UPDATE statement.");
+    }
+
+    pos_++;
+    selectStmt->newValues = parseAssignValues();
     skipWhitespace();
 
     if (matchKeyword("WHERE")) {

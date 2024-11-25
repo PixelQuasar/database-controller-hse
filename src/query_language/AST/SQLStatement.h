@@ -79,6 +79,23 @@ namespace database {
         std::unordered_map<std::string, std::string> newValues;
         std::string predicate;
 
+        std::string toString() const override {
+            std::string result = "UPDATE ";
+            bool isFirst = true;
+            for (const auto& [column, value] : newValues) {
+                if (!isFirst) {
+                    result += ", ";
+                }
+                result += column + " = " + value;
+                isFirst = false;
+            }
+            result += " FROM " + tableName;
+            if (!predicate.empty()) {
+                result += " WHERE " + predicate;
+            }
+            result += ";";
+            return result;
+        }
     };
 
 } // namespace database
