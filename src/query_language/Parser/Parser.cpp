@@ -8,7 +8,7 @@
 
 namespace database {
 
-std::unique_ptr<SQLStatement> Parser::parse(const std::string& sql) {
+std::shared_ptr<SQLStatement> Parser::parse(const std::string& sql) {
     Parser parser(sql);
     return parser.parseStatement();
 }
@@ -90,7 +90,7 @@ std::unordered_map<std::string, std::string> Parser::parseAssign(const std::stri
     return parser.parseAssignValues();
 }
 
-std::unique_ptr<SQLStatement> Parser::parseStatement() {
+std::shared_ptr<SQLStatement> Parser::parseStatement() {
     skipWhitespace();
     if (matchKeyword("CREATE")) {
         if (!matchKeyword("TABLE")) {
@@ -109,7 +109,7 @@ std::unique_ptr<SQLStatement> Parser::parseStatement() {
     }
 }
 
-std::unique_ptr<CreateTableStatement> Parser::parseCreateTable() {
+std::shared_ptr<CreateTableStatement> Parser::parseCreateTable() {
     skipWhitespace();
     std::string tableName = parseIdentifier();
     skipWhitespace();
@@ -120,7 +120,7 @@ std::unique_ptr<CreateTableStatement> Parser::parseCreateTable() {
     pos_++;
     skipWhitespace();
 
-    auto createStmt = std::make_unique<CreateTableStatement>();
+    auto createStmt = std::make_shared<CreateTableStatement>();
     createStmt->tableName = tableName;
 
     while (pos_ < sql_.size()) {
@@ -182,13 +182,13 @@ std::unique_ptr<CreateTableStatement> Parser::parseCreateTable() {
     return createStmt;
 }
 
-std::unique_ptr<InsertStatement> Parser::parseInsert() {
+std::shared_ptr<InsertStatement> Parser::parseInsert() {
     skipWhitespace();
 
     std::string tableName = parseIdentifier();
     skipWhitespace();
 
-    auto insertStmt = std::make_unique<InsertStatement>();
+    auto insertStmt = std::make_shared<InsertStatement>();
     insertStmt->tableName = tableName;
     bool flagValues = matchKeyword("VALUES");
     if (flagValues) {
@@ -251,8 +251,8 @@ std::unique_ptr<InsertStatement> Parser::parseInsert() {
     return insertStmt;
 }
 
-std::unique_ptr<SelectStatement> Parser::parseSelect() {
-    auto selectStmt = std::make_unique<SelectStatement>();
+std::shared_ptr<SelectStatement> Parser::parseSelect() {
+    auto selectStmt = std::make_shared<SelectStatement>();
 
     skipWhitespace();
     std::vector<std::string> columns = {};

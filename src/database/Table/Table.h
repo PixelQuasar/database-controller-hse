@@ -10,6 +10,7 @@
 #include <string>
 #include <functional>
 #include <set>
+#include <cstring>
 #include "../../types.h"
 #include "../../query_language/AST/SQLStatement.h"
 

@@ -16,7 +16,7 @@ namespace database {
     public:
         Executor(Database& database) : m_database(database) {}
 
-        Result execute(const SQLStatement& stmt);
+        Result execute(std::shared_ptr<SQLStatement> stmt);
 
     private:
         Database& m_database;
