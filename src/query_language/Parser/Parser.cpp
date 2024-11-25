@@ -26,22 +26,12 @@ std::unordered_map<std::string, std::string> Parser::parseAssignValues() {
             break;
         }
 
-        if (!firstColumn) {
-            size_t lastNonSpace = pos_ - 1;
-            while (lastNonSpace > 0 && std::isspace(sql_[lastNonSpace])) {
-                lastNonSpace--;
-            }
-
-            if (sql_[lastNonSpace] != ',') {
-                throw std::runtime_error(
-                    "Expected ',' between column assignments");
-            }
-        }
-
         std::string columnName = parseIdentifier();
         skipWhitespace();
 
         if (pos_ >= sql_.size() || sql_[pos_] != '=') {
+            std::cout << "Error: Expected '=' after column name: " << columnName
+                      << " at position " << pos_ << std::endl;
             throw std::runtime_error("Expected '=' after column name: " +
                                      columnName);
         }
@@ -53,25 +43,26 @@ std::unordered_map<std::string, std::string> Parser::parseAssignValues() {
             value = parseStringLiteral();
         } else {
             value = parseExpression();
-            if (!value.empty() && value != "true" && value != "false" &&
-                !std::all_of(value.begin(), value.end(), [](char c) {
-                    return std::isdigit(c) || c == '.' || c == '+' ||
-                           c == '-' || c == '*' || c == '/' || c == '(' ||
-                           c == ')' || std::isspace(c);
-                })) {
-                throw std::runtime_error(
-                    "String value must be enclosed in quotes: " + value);
-            }
         }
 
         columnValuePairs[columnName] = value;
         firstColumn = false;
 
         skipWhitespace();
+        if (pos_ >= sql_.size()) {
+            std::cout
+                << "Error: Unexpected end of input after value at position "
+                << pos_ << std::endl;
+            throw std::runtime_error("Unexpected end of input after value");
+        }
         if (sql_[pos_] == ',') {
             pos_++;
             skipWhitespace();
-            if (!std::isalpha(sql_[pos_]) && sql_[pos_] != '_') {
+            if (pos_ >= sql_.size() ||
+                (!std::isalpha(sql_[pos_]) && sql_[pos_] != '_')) {
+                std::cout
+                    << "Error: Expected column name after comma at position "
+                    << pos_ << std::endl;
                 throw std::runtime_error("Expected column name after comma");
             }
             continue;
@@ -80,9 +71,17 @@ std::unordered_map<std::string, std::string> Parser::parseAssignValues() {
             pos_++;
             break;
         }
+        std::cout << "Error: Expected ',' or ')' after value at position "
+                  << pos_ << std::endl;
         throw std::runtime_error("Expected ',' or ')' after value");
     }
     return columnValuePairs;
+}
+
+std::unordered_map<std::string, std::string> Parser::parseAssign(
+    const std::string& sql) {
+    Parser parser(sql);
+    return parser.parseAssignValues();
 }
 
 std::shared_ptr<SQLStatement> Parser::parseStatement() {
@@ -153,6 +152,14 @@ std::shared_ptr<CreateTableStatement> Parser::parseCreateTable() {
             } else if (matchKeyword("KEY")) {
                 column.isUnique = true;
                 column.isKey = true;
+            } else if (matchKeyword("DEFAULT")) {
+                column.hasDefault = true;
+                skipWhitespace();
+                if (sql_[pos_] == '"') {
+                    column.defaultValue = parseStringLiteral();
+                } else {
+                    column.defaultValue = parseExpression();
+                }
             } else {
                 std::string unknownAttr = parseIdentifier();
                 throw std::runtime_error("Unknown column attribute: " +
@@ -199,12 +206,31 @@ std::shared_ptr<InsertStatement> Parser::parseInsert() {
 
     if (flagValues) {
         std::vector<std::string> values;
+        bool expectValue = true;
+
         while (pos_ < sql_.size()) {
             skipWhitespace();
 
             if (sql_[pos_] == ')') {
+                if (expectValue) {
+                    values.push_back("");
+                }
                 pos_++;
                 break;
+            }
+
+            if (sql_[pos_] == ',') {
+                if (expectValue) {
+                    values.push_back("");
+                }
+                pos_++;
+                expectValue = true;
+                continue;
+            }
+
+            if (!expectValue) {
+                throw std::runtime_error(
+                    "Expected ',' or ')' after value in VALUES clause");
             }
 
             std::string value;
@@ -214,28 +240,19 @@ std::shared_ptr<InsertStatement> Parser::parseInsert() {
                 value = parseExpression();
             }
 
-            values.push_back(value);
+            if (!value.empty()) {
+                values.push_back(value);
+            } else {
+                values.push_back("");
+            }
+            expectValue = false;
 
             skipWhitespace();
-            if (sql_[pos_] == ',') {
-                pos_++;
-                skipWhitespace();
-                if (sql_[pos_] == ')') {
-                    throw std::runtime_error(
-                        "Expected value after comma in VALUES clause");
-                }
-                continue;
-            }
-            if (sql_[pos_] == ')') {
-                pos_++;
-                break;
-            }
-            throw std::runtime_error(
-                "Expected ',' or ')' after value in VALUES clause");
         }
 
         insertStmt->values = values;
     } else {
+        insertStmt->isMapFormat = true;
         insertStmt->columnValuePairs = parseAssignValues();
     }
 
@@ -442,22 +459,47 @@ std::string Parser::parseExpression() {
     std::string value;
     int brackets = 0;
 
+    std::cout << "Starting parseExpression at position " << pos_
+              << ", current char: '" << sql_[pos_] << "'" << std::endl;
+    std::cout << "Remaining SQL: " << sql_.substr(pos_) << std::endl;
+
+    skipWhitespace();
+    if (sql_[pos_] == ',' || sql_[pos_] == ')') {
+        std::cout << "Found empty value" << std::endl;
+        return "";
+    }
+
     while (pos_ < sql_.size()) {
         char c = sql_[pos_];
+        std::cout << "Processing char: '" << c << "' at position " << pos_
+                  << std::endl;
 
-        if (c == '(')
+        if (c == '(') {
+            std::cout << "Found opening bracket, current depth: " << brackets
+                      << std::endl;
             brackets++;
-        else if (c == ')') {
+        } else if (c == ')') {
+            std::cout << "Found closing bracket, current depth: " << brackets
+                      << std::endl;
             if (brackets == 0) break;
             brackets--;
-        } else if (brackets == 0 && c == ',')
+        } else if (brackets == 0 && (c == ',' || c == ')')) {
+            std::cout << "Found delimiter at depth 0, breaking" << std::endl;
             break;
+        }
 
         value += c;
         pos_++;
+
+        std::cout << "Current value: '" << value << "'" << std::endl;
     }
 
-    return trim(value);
+    value = trim(value);
+    std::cout << "Final parsed expression: '" << value << "'" << std::endl;
+    std::cout << "Stopped at position " << pos_ << ", next char: '"
+              << (pos_ < sql_.size() ? sql_[pos_] : ' ') << "'" << std::endl;
+
+    return value;
 }
 
 }  // namespace database

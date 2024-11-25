@@ -16,6 +16,33 @@
 #include "../../Calculator/Calculator.h"
 
 namespace database {
+
+    std::string dBTypeToString(DBType value) {
+        std::string str_value;
+        if (std::holds_alternative<int>(value)) {
+            str_value = std::to_string(std::get<int>(value));
+         } else if (std::holds_alternative<double>(value)) {
+            str_value = std::to_string(std::get<double>(value));
+        } else if (std::holds_alternative<bool>(value)) {
+            str_value = std::to_string(std::get<bool>(value));
+        } else if (std::holds_alternative<std::string>(value)) {
+            str_value = std::get<std::string>(value);
+        }
+        return str_value;
+    }
+
+    std::string Table::convert_to_byte_buffer() {
+        std::string buffer;
+        for (auto& row : rows_) {
+            int current_column_index = 0;
+            for (auto& cell : row) {
+                union {
+                    int intValue;
+                    double doubleValue;
+                    bool boolValue;
+                    char charArray4[4];
+                    char charArray8[8];
+                } converter {};
 std::string Table::convert_to_byte_buffer() {
     std::string buffer;
     for (auto& row : rows_) {
@@ -137,35 +164,41 @@ void Table::insert_row(RowType row) {
         throw std::runtime_error("Number of values exceeds number of columns.");
     }
 
-    for (size_t i = 0; i < scheme_.size(); ++i) {
-        if (scheme_[i].isUnique) {
-            for (const auto& existing_row : rows_) {
-                if (existing_row[i] == row[i]) {
-                    throw std::runtime_error(
-                        "Unique constraint violated for column: " +
-                        scheme_[i].name);
+        for (size_t i = 0; i < scheme_.size(); ++i) {
+            if (scheme_[i].isAutoIncrement) {
+                if (!std::holds_alternative<int>(row[i])) {
+                    throw std::runtime_error("AutoIncrement is only applicable to integer columns.");
+                }
+
+                int value = std::get<int>(row[i]);
+                if (value == 0) {
+                    row[i] = autoIncrementValues_[scheme_[i].name]++;
+                } else {
+                    if (value >= autoIncrementValues_[scheme_[i].name]) {
+                        autoIncrementValues_[scheme_[i].name] = value + 1;
+                    } else {
+                        throw std::runtime_error("Cannot set AUTOINCREMENT value less than current sequence: " + scheme_[i].name);
+                    }
                 }
             }
         }
 
-        if (scheme_[i].isKey) {
-            if (indexes_[scheme_[i].name].count(row[i])) {
-                throw std::runtime_error(
-                    "Key constraint violated for column: " + scheme_[i].name);
+        for (size_t i = 0; i < scheme_.size(); ++i) {
+            if (scheme_[i].isUnique) {
+                for (const auto& existing_row : rows_) {
+                    if (existing_row[i] == row[i]) {
+                        throw std::runtime_error("Unique constraint violated for column: " + scheme_[i].name);
+                    }
+                }
             }
-            indexes_[scheme_[i].name].insert(row[i]);
-        }
 
-        if (scheme_[i].isAutoIncrement) {
-            if (std::holds_alternative<int>(row[i]) &&
-                std::get<int>(row[i]) == 0) {
-                row[i] = autoIncrementValues_[scheme_[i].name]++;
-            } else if (!std::holds_alternative<int>(row[i])) {
-                throw std::runtime_error(
-                    "AutoIncrement is only applicable to integer columns.");
+            if (scheme_[i].isKey) {
+                if (indixes_[scheme_[i].name].count(row[i])) {
+                    throw std::runtime_error("Key constraint violated for column: " + scheme_[i].name);
+                }
+                indixes_[scheme_[i].name].insert(row[i]);
             }
         }
-    }
 
     rows_.push_back(row);
 }

@@ -20,6 +20,7 @@ namespace database {
         bool isKey = false;
         std::string defaultValue;
         bool isAutoIncrement = false;
+        bool hasDefault = false;
 
         std::string toString() const {
             return name + " " + type;

@@ -6,7 +6,7 @@
 
 #include <iostream>
 #include <memory>
-
+#include <unordered_set>
 #include "../../Calculator/Calculator.h"
 #include "../../database/Database/Database.h"
 #include "../AST/SQLStatement.h"
