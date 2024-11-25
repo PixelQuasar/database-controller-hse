@@ -9,7 +9,6 @@
 #include "Table.h"
 #include <stdexcept>
 #include <algorithm>
-#include <iostream>
 #include "../../Calculator/Calculator.h"
 
 namespace database {
@@ -147,14 +146,6 @@ namespace database {
     }
 
     void Table::insert_row(RowType row) {
-        std::cout << "Inserting row into table " << name_ << std::endl;
-        std::cout << "Current table size: " << rows_.size() << std::endl;
-        std::cout << "Row values: ";
-        for (const auto& value : row) {
-            std::cout << database::dBTypeToString(value) << " ";
-        }
-        std::cout << std::endl;
-
         if (row.size() > scheme_.size()) {
             throw std::runtime_error("Number of values exceeds number of columns.");
         }
@@ -196,15 +187,6 @@ namespace database {
         }
 
         rows_.push_back(row);
-        std::cout << "New table size after insert: " << rows_.size() << std::endl;
-        std::cout << "Current rows content:" << std::endl;
-        for (const auto& r : rows_) {
-            std::cout << "Row: ";
-            for (const auto& value : r) {
-                std::cout << database::dBTypeToString(value) << " ";
-            }
-            std::cout << std::endl;
-        }
     }
 
     void Table::addAutoIncrement(const std::string& columnName) {

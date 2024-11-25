@@ -254,6 +254,110 @@ TEST_F(ParserTest, ParseCreateTableWithDefaultExpressions) {
     EXPECT_EQ(createStmt->columns[2].defaultValue, "true && false");
 }
 
+TEST_F(ParserTest, ParseInsertWithEmptyValues) {
+    auto stmt = Parser::parse("INSERT INTO Test VALUES (1, , \"Alice\", , 25);");
+    auto insertStmt = dynamic_cast<InsertStatement*>(stmt.get());
+    ASSERT_NE(insertStmt, nullptr);
+    EXPECT_EQ(insertStmt->tableName, "Test");
+    ASSERT_EQ(insertStmt->values.size(), 5);
+    EXPECT_EQ(insertStmt->values[0], "1");
+    EXPECT_EQ(insertStmt->values[1], "");  
+    EXPECT_EQ(insertStmt->values[2], "\"Alice\"");
+    EXPECT_EQ(insertStmt->values[3], "");  
+    EXPECT_EQ(insertStmt->values[4], "25");
+}
+
+TEST_F(ParserTest, ParseInsertWithEmptyValuesTwo) {
+    auto stmt1 = Parser::parse("INSERT INTO Test VALUES (1, , \"Alice\", , 25);");
+    auto insertStmt1 = dynamic_cast<InsertStatement*>(stmt1.get());
+    ASSERT_NE(insertStmt1, nullptr);
+    EXPECT_EQ(insertStmt1->values.size(), 5);
+    EXPECT_EQ(insertStmt1->values[0], "1");
+    EXPECT_EQ(insertStmt1->values[1], "");
+    EXPECT_EQ(insertStmt1->values[2], "\"Alice\"");
+    EXPECT_EQ(insertStmt1->values[3], "");
+    EXPECT_EQ(insertStmt1->values[4], "25");
+
+    auto stmt2 = Parser::parse("INSERT INTO Test VALUES (, 1, \"Bob\", 30, );");
+    auto insertStmt2 = dynamic_cast<InsertStatement*>(stmt2.get());
+    ASSERT_NE(insertStmt2, nullptr);
+    EXPECT_EQ(insertStmt2->values.size(), 5);
+    EXPECT_EQ(insertStmt2->values[0], "");
+    EXPECT_EQ(insertStmt2->values[4], "");
+
+    auto stmt3 = Parser::parse("INSERT INTO Test VALUES (1, , , , 5);");
+    auto insertStmt3 = dynamic_cast<InsertStatement*>(stmt3.get());
+    ASSERT_NE(insertStmt3, nullptr);
+    EXPECT_EQ(insertStmt3->values.size(), 5);
+    EXPECT_EQ(insertStmt3->values[1], "");
+    EXPECT_EQ(insertStmt3->values[2], "");
+    EXPECT_EQ(insertStmt3->values[3], "");
+
+    auto stmt4 = Parser::parse("INSERT INTO Test VALUES (, , , );");
+    auto insertStmt4 = dynamic_cast<InsertStatement*>(stmt4.get());
+    ASSERT_NE(insertStmt4, nullptr);
+    EXPECT_EQ(insertStmt4->values.size(), 4);
+    for (const auto& value : insertStmt4->values) {
+        EXPECT_EQ(value, "");
+    }
+}
+
+TEST_F(ParserTest, ParseInsertWithComplexExpressions) {
+    auto stmt = Parser::parse(
+        "INSERT INTO Test VALUES ("
+        "1 + 2 * 3, "
+        "(4 + 5) * (6 + 7), "
+        "\"Complex \\\"String\\\" Here\", "
+        "true && (false || true), "
+        "2.5 * (3.0 + 4.5)"
+        ");"
+    );
+    auto insertStmt = dynamic_cast<InsertStatement*>(stmt.get());
+    ASSERT_NE(insertStmt, nullptr);
+    EXPECT_EQ(insertStmt->values.size(), 5);
+    EXPECT_EQ(insertStmt->values[0], "1 + 2 * 3");
+    EXPECT_EQ(insertStmt->values[1], "(4 + 5) * (6 + 7)");
+    EXPECT_EQ(insertStmt->values[2], "\"Complex \\\"String\\\" Here\"");
+    EXPECT_EQ(insertStmt->values[3], "true && (false || true)");
+    EXPECT_EQ(insertStmt->values[4], "2.5 * (3.0 + 4.5)");
+}
+
+TEST_F(ParserTest, ParseInsertEdgeCases) {
+    EXPECT_THROW(Parser::parse("INSERT INTO Test VALUES ();"), std::runtime_error);
+    
+    EXPECT_THROW(Parser::parse("INSERT INTO Test VALUES (1 2);"), std::runtime_error);
+
+    EXPECT_THROW(Parser::parse("INSERT INTO Test VALUES (1, \"unclosed);"), std::runtime_error);
+    
+    EXPECT_THROW(Parser::parse("INSERT INTO Test VALUES (1, (2 + 3);"), std::runtime_error);
+}
+
+TEST_F(ParserTest, ParseInsertWithWhitespace) {
+    auto stmt = Parser::parse("INSERT   INTO   Test   VALUES   (  1  ,  \"Alice\"  ,  25  )  ;");
+    auto insertStmt = dynamic_cast<InsertStatement*>(stmt.get());
+    ASSERT_NE(insertStmt, nullptr);
+    EXPECT_EQ(insertStmt->values.size(), 3);
+    EXPECT_EQ(insertStmt->values[0], "1");
+    EXPECT_EQ(insertStmt->values[1], "\"Alice\"");
+    EXPECT_EQ(insertStmt->values[2], "25");
+}
+
+TEST_F(ParserTest, ParseInsertWithNewlines) {
+    auto stmt = Parser::parse(
+        "INSERT INTO Test VALUES (\n"
+        "    1,\n"
+        "    \"Alice\",\n"
+        "    25\n"
+        ");"
+    );
+    auto insertStmt = dynamic_cast<InsertStatement*>(stmt.get());
+    ASSERT_NE(insertStmt, nullptr);
+    EXPECT_EQ(insertStmt->values.size(), 3);
+    EXPECT_EQ(insertStmt->values[0], "1");
+    EXPECT_EQ(insertStmt->values[1], "\"Alice\"");
+    EXPECT_EQ(insertStmt->values[2], "25");
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
