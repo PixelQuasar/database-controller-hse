@@ -3,6 +3,8 @@
 //
 
 #include "Result.h"
+#include <variant>
 
 namespace database {
+    
 } // database

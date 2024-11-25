@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <iostream>
 #include "../../Calculator/Calculator.h"
+
 namespace database {
     std::string Table::convert_to_byte_buffer() {
         std::string buffer;

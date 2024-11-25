@@ -137,6 +137,7 @@ TEST_F(ExecutorTest, ComplexScenario) {
         "    PerformanceScore INT"
         ");"
     );
+    
     executor.execute(*createStmt);
 
     const auto& table = db.getTable("Employees");
