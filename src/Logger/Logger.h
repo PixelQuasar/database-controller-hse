@@ -19,9 +19,9 @@ namespace database {
     class Logger {
     public:
         // Constructor: Opens the log file in append mode
-        Logger(const std::string& filename)
+        Logger()
         {
-            logFile.open(filename, std::ios::app);
+            std::ofstream logFile("log.txt");
             if (!logFile.is_open()) {
                 std::cerr << "Error opening log file." << std::endl;
             }
