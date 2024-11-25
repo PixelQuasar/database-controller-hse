@@ -25,13 +25,13 @@ namespace database {
         return str_value;
     }
 
-    Result Executor::execute(const SQLStatement& stmt) {
+    Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
         Result result = {};
         try {
             calculator::Calculator calc;
-            if (const auto *createStmt = dynamic_cast<const CreateTableStatement *>(&stmt)) {
+            if (const auto *createStmt = dynamic_cast<const CreateTableStatement *>(stmt.get())) {
                 m_database.createTable(createStmt->tableName, createStmt->columns);
-            } else if (const auto *insertStmt = dynamic_cast<const InsertStatement *>(&stmt)) {
+            } else if (const auto *insertStmt = dynamic_cast<const InsertStatement *>(stmt.get())) {
                 std::vector<DBType> row;
                 const auto &table = m_database.getTable(insertStmt->tableName);
                 const auto &columns = table.get_scheme();
@@ -72,7 +72,7 @@ namespace database {
                     }
                 }
                 m_database.insertInto(insertStmt->tableName, row);
-            } else if (const auto *insertStmt = dynamic_cast<const SelectStatement *>(&stmt)) {
+            } else if (const auto *insertStmt = dynamic_cast<const SelectStatement *>(stmt.get())) {
                 auto table = m_database.getTable(insertStmt->tableName);
 
                 // check if columns are valid

@@ -13,7 +13,7 @@ protected:
 
 TEST_F(ExecutorTest, ExecuteCreateTable) {
     auto stmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR);");
-    executor.execute(*stmt);
+    executor.execute(stmt);
     const auto& table = db.getTable("Test");
     EXPECT_EQ(table.get_name(), "Test");
     ASSERT_EQ(table.get_scheme().size(), 2);
@@ -23,10 +23,10 @@ TEST_F(ExecutorTest, ExecuteCreateTable) {
 
 TEST_F(ExecutorTest, ExecuteInsert) {
     auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR);");
-    executor.execute(*createStmt);
+    executor.execute(createStmt);
 
     auto insertStmt = Parser::parse("INSERT INTO Test VALUES (1, \"Alice\");");
-    executor.execute(*insertStmt);
+    executor.execute(insertStmt);
 
     const auto& table = db.getTable("Test");
     const auto& data = table.get_rows();
@@ -37,13 +37,13 @@ TEST_F(ExecutorTest, ExecuteInsert) {
 
 TEST_F(ExecutorTest, ExecuteMultipleInserts) {
     auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR);");
-    executor.execute(*createStmt);
+    executor.execute(createStmt);
 
     auto insertStmt1 = Parser::parse("INSERT INTO Test VALUES (1, \"Alice\");");
-    executor.execute(*insertStmt1);
+    executor.execute(insertStmt1);
 
     auto insertStmt2 = Parser::parse("INSERT INTO Test VALUES (2, \"Bob\");");
-    executor.execute(*insertStmt2);
+    executor.execute(insertStmt2);
 
     const auto& table = db.getTable("Test");
     const auto& data = table.get_rows();
@@ -56,10 +56,10 @@ TEST_F(ExecutorTest, ExecuteMultipleInserts) {
 
 TEST_F(ExecutorTest, ExecuteInsertWithExpression) {
     auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR, Age INT);");
-    executor.execute(*createStmt);
+    executor.execute(createStmt);
 
     auto insertStmt = Parser::parse("INSERT INTO Test VALUES (1, \"Alice\", 20 + 5);");
-    executor.execute(*insertStmt);
+    executor.execute(insertStmt);
 
     const auto& table = db.getTable("Test");
     const auto& data = table.get_rows();
@@ -71,10 +71,10 @@ TEST_F(ExecutorTest, ExecuteInsertWithExpression) {
 
 TEST_F(ExecutorTest, ExecuteInsertWithBoolean) {
     auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR, Active BOOL);");
-    executor.execute(*createStmt);
+    executor.execute(createStmt);
 
     auto insertStmt = Parser::parse("INSERT INTO Test VALUES (1, \"Alice\", true);");
-    executor.execute(*insertStmt);
+    executor.execute(insertStmt);
 
     const auto& table = db.getTable("Test");
     const auto& data = table.get_rows();
@@ -86,33 +86,33 @@ TEST_F(ExecutorTest, ExecuteInsertWithBoolean) {
 
 TEST_F(ExecutorTest, ExecuteInsertWithInvalidType) {
     auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR);");
-    auto result1 = executor.execute(*createStmt);
+    auto result1 = executor.execute(createStmt);
     EXPECT_TRUE(result1.is_ok());
     auto insertStmt = Parser::parse("INSERT INTO Test VALUES (\"Alice\", 1);");
-    auto result2 = executor.execute(*insertStmt);
+    auto result2 = executor.execute(insertStmt);
     EXPECT_FALSE(result2.is_ok());
 }
 
 TEST_F(ExecutorTest, ExecuteCreateTableDuplicate) {
     auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR);");
-    executor.execute(*createStmt);
+    executor.execute(createStmt);
     auto duplicateStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR);");
-    auto result = executor.execute(*duplicateStmt);
+    auto result = executor.execute(duplicateStmt);
     EXPECT_FALSE(result.is_ok());
 }
 
 TEST_F(ExecutorTest, ExecuteInsertIntoNonExistentTable) {
     auto insertStmt = Parser::parse("INSERT INTO NonExistent VALUES (1, \"Alice\");");
-    auto result = executor.execute(*insertStmt);
+    auto result = executor.execute(insertStmt);
     EXPECT_FALSE(result.is_ok());
 }
 
 TEST_F(ExecutorTest, ExecuteComplexInsert) {
     auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR, Age INT, Active BOOL);");
-    executor.execute(*createStmt);
+    executor.execute(createStmt);
 
     auto insertStmt = Parser::parse("INSERT INTO Test VALUES (1, \"Alice\", 20 + 5, true && false);");
-    executor.execute(*insertStmt);
+    executor.execute(insertStmt);
 
     const auto& table = db.getTable("Test");
     const auto& data = table.get_rows();
@@ -138,7 +138,7 @@ TEST_F(ExecutorTest, ComplexScenario) {
         ");"
     );
     
-    executor.execute(*createStmt);
+    executor.execute(createStmt);
 
     const auto& table = db.getTable("Employees");
     EXPECT_EQ(table.get_name(), "Employees");
@@ -156,7 +156,7 @@ TEST_F(ExecutorTest, ComplexScenario) {
 
     for (const auto& sql : insertStatements) {
         auto stmt = Parser::parse(sql);
-        executor.execute(*stmt);
+        executor.execute(stmt);
     }
 
     const auto& data = table.get_rows();
@@ -205,42 +205,42 @@ TEST_F(ExecutorTest, ComplexScenario) {
 
 TEST_F(ExecutorTest, UniqueConstraint) {
     auto createStmt = Parser::parse("CREATE TABLE Test (ID INT UNIQUE, Name VARCHAR);");
-    executor.execute(*createStmt);
+    executor.execute(createStmt);
 
     auto insertStmt1 = Parser::parse("INSERT INTO Test VALUES (1, \"Alice\");");
-    executor.execute(*insertStmt1);
+    executor.execute(insertStmt1);
 
     auto insertStmt2 = Parser::parse("INSERT INTO Test VALUES (1, \"Bob\");");
-    auto result = executor.execute(*insertStmt2);
+    auto result = executor.execute(insertStmt2);
     EXPECT_FALSE(result.is_ok());
 
     auto insertStmt3 = Parser::parse("INSERT INTO Test VALUES (2, \"Charlie\");");
-    auto result2 = executor.execute(*insertStmt3);
+    auto result2 = executor.execute(insertStmt3);
     EXPECT_TRUE(result2.is_ok());
 
     auto insertStmt4 = Parser::parse("INSERT INTO Test VALUES (2, \"Charlie\");");
-    auto result3 = executor.execute(*insertStmt4);
+    auto result3 = executor.execute(insertStmt4);
     EXPECT_FALSE(result3.is_ok());
 }
 
 TEST_F(ExecutorTest, AutoIncrement) {
     auto createStmt = Parser::parse("CREATE TABLE Test (ID INT AUTOINCREMENT, Name VARCHAR);");
-    executor.execute(*createStmt);
+    executor.execute(createStmt);
 
     auto insertStmt1 = Parser::parse("INSERT INTO Test VALUES (NULL, \"Alice\");");
-    executor.execute(*insertStmt1);
+    executor.execute(insertStmt1);
 
     auto insertStmt2 = Parser::parse("INSERT INTO Test VALUES (NULL, \"Bob\");");
-    executor.execute(*insertStmt2);
+    executor.execute(insertStmt2);
 
     auto insertStmt3 = Parser::parse("INSERT INTO Test VALUES (NULL, \"Charlie\");");
-    executor.execute(*insertStmt3);
+    executor.execute(insertStmt3);
 
     auto insertStmt4 = Parser::parse("INSERT INTO Test VALUES (10, \"David\");");
-    executor.execute(*insertStmt4);
+    executor.execute(insertStmt4);
 
     auto insertStmt5 = Parser::parse("INSERT INTO Test VALUES (NULL, \"Eve\");");
-    executor.execute(*insertStmt5);
+    executor.execute(insertStmt5);
 
     const auto& table = db.getTable("Test");
     const auto& data = table.get_rows();
@@ -259,16 +259,16 @@ TEST_F(ExecutorTest, AutoIncrement) {
 
 TEST_F(ExecutorTest, MultipleAutoIncrement) {
     auto createStmt = Parser::parse("CREATE TABLE Test (ID1 INT AUTOINCREMENT, ID2 INT AUTOINCREMENT, Name VARCHAR);");
-    executor.execute(*createStmt);
+    executor.execute(createStmt);
 
     auto insertStmt1 = Parser::parse("INSERT INTO Test VALUES (NULL, NULL, \"Alice\");");
-    executor.execute(*insertStmt1);
+    executor.execute(insertStmt1);
 
     auto insertStmt2 = Parser::parse("INSERT INTO Test VALUES (NULL, NULL, \"Bob\");");
-    executor.execute(*insertStmt2);
+    executor.execute(insertStmt2);
 
     auto insertStmt3 = Parser::parse("INSERT INTO Test VALUES (NULL, NULL, \"Charlie\");");
-    executor.execute(*insertStmt3);
+    executor.execute(insertStmt3);
 
     const auto& table = db.getTable("Test");
     const auto& data = table.get_rows();
@@ -286,17 +286,17 @@ TEST_F(ExecutorTest, MultipleAutoIncrement) {
 
 TEST_F(ExecutorTest, KeyConstraint) {
     auto createStmt = Parser::parse("CREATE TABLE Test (ID INT KEY, Name VARCHAR);");
-    executor.execute(*createStmt);
+    executor.execute(createStmt);
 
     auto insertStmt1 = Parser::parse("INSERT INTO Test VALUES (1, \"Alice\");");
-    executor.execute(*insertStmt1);
+    executor.execute(insertStmt1);
 
     auto insertStmt2 = Parser::parse("INSERT INTO Test VALUES (1, \"Bob\");");
-    auto result = executor.execute(*insertStmt2);
+    auto result = executor.execute(insertStmt2);
     EXPECT_FALSE(result.is_ok());
 
     auto insertStmt3 = Parser::parse("INSERT INTO Test VALUES (2, \"Charlie\");");
-    auto result2 = executor.execute(*insertStmt3);
+    auto result2 = executor.execute(insertStmt3);
     EXPECT_TRUE(result2.is_ok());
 }
 
