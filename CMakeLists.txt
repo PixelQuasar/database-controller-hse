@@ -9,7 +9,7 @@ add_subdirectory(external/googletest)
 add_subdirectory(src/Calculator)
 add_subdirectory(src/database/Database)
 add_subdirectory(src/database/Table)
-add_subdirectory(src/database/Result)
+add_subdirectory(src/query_language/Result)
 add_subdirectory(src/query_language/Executor)
 add_subdirectory(src/query_language/Parser)
 add_subdirectory(src/query_language/Query)
@@ -20,7 +20,7 @@ set(SOURCE_FILES
     src/database/Table/Table.cpp
     src/query_language/Executor/Executor.cpp
     src/query_language/Query/Query.cpp
-    src/database/Result/Result.cpp
+        src/query_language/Result/Result.cpp
 )
 
 add_executable(database ${SOURCE_FILES})

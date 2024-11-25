@@ -29,7 +29,7 @@ namespace calculator {
 
     Value Calculator::evaluate(
         const std::string& expression, const std::unordered_map<std::string, std::string>& external_values
-    ) {
+    ) const {
         std::vector<std::string> tokens = tokenize(expression, external_values);
         std::vector<std::string> outputQueue;
         std::stack<std::string> operatorStack;
@@ -123,7 +123,7 @@ namespace calculator {
 
     std::vector<std::string> Calculator::tokenize(
         const std::string& expression, const std::unordered_map<std::string, std::string>& external_values
-    ) {
+    ) const {
         std::vector<std::string> tokens;
         std::string token;
         bool inString = false;

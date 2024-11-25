@@ -1,5 +1,7 @@
 #include "Parser.h"
 #include <algorithm>
+#include <iostream>
+#include <cctype>\
 
 namespace database {
 
@@ -22,6 +24,8 @@ namespace database {
                 throw std::runtime_error("Expected INTO after INSERT");
             }
             return parseInsert();
+        } else if (matchKeyword("SELECT")) {
+            return parseSelect();
         } else {
             throw std::runtime_error("Unsupported SQL statement.");
         }
@@ -32,52 +36,200 @@ namespace database {
         std::string tableName = parseIdentifier();
         skipWhitespace();
         
-        if (sql_[pos_] != '(') {
-            throw std::runtime_error("Expected '(' after table name.");
+        if (pos_ >= sql_.size() || sql_[pos_] != '(') {
+            throw std::runtime_error("Ожидалась '(' после названия таблицы.");
         }
-        pos_++;
+        pos_++; // Пропускаем '('
         skipWhitespace();
 
         auto createStmt = std::make_unique<CreateTableStatement>();
         createStmt->tableName = tableName;
 
-        while (!isEnd()) {
+        while (pos_ < sql_.size()) {
             skipWhitespace();
             
             if (sql_[pos_] == ')') {
-                pos_++;
+                pos_++; // Пропускаем ')'
                 break;
             }
 
+            // Парсим имя колонки
             std::string columnName = parseIdentifier();
             skipWhitespace();
 
-            std::string columnType;
-            while (pos_ < sql_.size() && 
-                   sql_[pos_] != ',' && 
-                   sql_[pos_] != ')' && 
-                   !std::isspace(sql_[pos_])) {
-                columnType += sql_[pos_++];
-            }
-
-            if (columnType.empty()) {
-                throw std::runtime_error("Expected column type after column name");
-            }
-
-            createStmt->columns.push_back(ColumnDefinition{columnName, columnType});
-
+            // Парсим тип данных
+            std::string columnType = parseIdentifier();
             skipWhitespace();
-            if (sql_[pos_] == ',') {
+
+            ColumnDefinition column;
+            column.name = columnName;
+            column.type = columnType;
+
+            // Парсим атрибуты колонки
+            while (pos_ < sql_.size()) {
+                skipWhitespace();
+                if (sql_[pos_] == ',' || sql_[pos_] == ')') {
+                    break;
+                }
+
+                // Проверяем на наличие ключевых слов атрибутов
+                if (matchKeyword("NOT NULL")) {
+                    column.notNull = true;
+                    std::cerr << "Parsed NOT NULL for column: " << column.name << std::endl;
+                }
+                else if (matchKeyword("PRIMARY KEY")) {
+                    column.isPrimaryKey = true;
+                    std::cerr << "Parsed PRIMARY KEY for column: " << column.name << std::endl;
+                }
+                else if (matchKeyword("UNIQUE")) {
+                    column.isUnique = true;
+                    std::cerr << "Parsed UNIQUE for column: " << column.name << std::endl;
+                }
+                else if (matchKeyword("DEFAULT")) {
+                    skipWhitespace();
+                    // Парсим значение по умолчанию
+                    if (sql_[pos_] == '"') {
+                        std::string defaultVal = "\"";
+                        pos_++; // Пропускаем начальную кавычку
+                        while (pos_ < sql_.size() && sql_[pos_] != '"') {
+                            if (sql_[pos_] == '\\' && pos_ + 1 < sql_.size() && sql_[pos_ + 1] == '"') {
+                                defaultVal += '\"';
+                                pos_ += 2;
+                            }
+                            else {
+                                defaultVal += sql_[pos_++];
+                            }
+                        }
+                        if (pos_ >= sql_.size()) {
+                            throw std::runtime_error("Незавершённый строковый литерал в DEFAULT значении.");
+                        }
+                        defaultVal += '"';
+                        pos_++; // Пропускаем закрывающую кавычку
+                        column.defaultValue = defaultVal;
+                        std::cerr << "Parsed DEFAULT \"" << defaultVal << "\" for column: " << column.name << std::endl;
+                    }
+                    else {
+                        // Парсим до следующей запятой или закрывающей скобки
+                        std::string defaultVal;
+                        while (pos_ < sql_.size() && sql_[pos_] != ',' && sql_[pos_] != ')') {
+                            defaultVal += sql_[pos_++];
+                        }
+                        // Удаляем лишние пробелы
+                        size_t start = defaultVal.find_first_not_of(" \t\n\r");
+                        size_t end = defaultVal.find_last_not_of(" \t\n\r");
+                        if (start != std::string::npos && end != std::string::npos) {
+                            defaultVal = defaultVal.substr(start, end - start + 1);
+                        }
+                        else {
+                            defaultVal = "";
+                        }
+                        column.defaultValue = defaultVal;
+                        std::cerr << "Parsed DEFAULT " << defaultVal << " for column: " << column.name << std::endl;
+                    }
+                }
+                else if (matchKeyword("FOREIGN KEY")) {
+                    column.isForeignKey = true;
+                    skipWhitespace();
+                    if (sql_[pos_] != '(') {
+                        throw std::runtime_error("Ожидалась '(' после FOREIGN KEY.");
+                    }
+                    pos_++; // Пропускаем '('
+                    std::string refColumn = parseIdentifier();
+                    skipWhitespace();
+                    if (sql_[pos_] != ')') {
+                        throw std::runtime_error("Ожидалась ')' после имени колонки FOREIGN KEY.");
+                    }
+                    pos_++; // Пропускаем ')'
+                    skipWhitespace();
+                    if (!matchKeyword("REFERENCES")) {
+                        throw std::runtime_error("Ожидалось REFERENCES после FOREIGN KEY.");
+                    }
+                    skipWhitespace();
+                    std::string refTable = parseIdentifier();
+                    skipWhitespace();
+                    if (sql_[pos_] != '(') {
+                        throw std::runtime_error("Ожидалась '(' после названия таблицы в FOREIGN KEY.");
+                    }
+                    pos_++; // Пропускаем '('
+                    std::string refTableColumn = parseIdentifier();
+                    skipWhitespace();
+                    if (sql_[pos_] != ')') {
+                        throw std::runtime_error("Ожидалась ')' после имени внешней колонки в FOREIGN KEY.");
+                    }
+                    pos_++; // Пропускаем ')'
+                    column.referencesTable = refTable;
+                    column.referencesColumn = refTableColumn;
+                    std::cerr << "Parsed FOREIGN KEY (" << refColumn << ") REFERENCES "
+                              << refTable << "(" << refTableColumn << ") for column: "
+                              << column.name << std::endl;
+                }
+                else if (matchKeyword("CHECK")) {
+                    skipWhitespace();
+                    if (sql_[pos_] != '(') {
+                        throw std::runtime_error("Ожидалась '(' после CHECK.");
+                    }
+                    pos_++; // Пропускаем '('
+                    // Парсим условие CHECK до закрывающей скобки
+                    std::string checkCond;
+                    int bracketCount = 1;
+                    while (pos_ < sql_.size() && bracketCount > 0) {
+                        if (sql_[pos_] == '(') bracketCount++;
+                        else if (sql_[pos_] == ')') bracketCount--;
+
+                        if (bracketCount > 0) {
+                            checkCond += sql_[pos_++];
+                        }
+                    }
+                    if (bracketCount != 0) {
+                        throw std::runtime_error("Незавершённое условие CHECK.");
+                    }
+                    pos_++; // Пропускаем ')'
+                    column.checkCondition = checkCond;
+                    std::cerr << "Parsed CHECK (" << checkCond << ") for column: " << column.name << std::endl;
+                }
+                else {
+                    std::cerr << "Неизвестный атрибут колонки: ";
+                    std::string unknownAttr = parseIdentifier();
+                    std::cerr << unknownAttr << " at position " << pos_ << std::endl;
+                    throw std::runtime_error("Неизвестный атрибут колонки: " + unknownAttr);
+                }
+            }
+
+            createStmt->columns.push_back(column);
+            skipWhitespace();
+
+            // Если текущий символ - запятая, пропускаем её и продолжаем парсинг
+            if (pos_ < sql_.size() && sql_[pos_] == ',') {
                 pos_++;
                 continue;
+            }
+            // Если текущий символ - закрывающая скобка, завершаем парсинг
+            else if (pos_ < sql_.size() && sql_[pos_] == ')') {
+                pos_++;
+                break;
+            }
+            // В противном случае ожидаем запятую или закрывающую скобку
+            else {
+                std::cerr << "Ожидалась ',' или ')' после определения колонки. Текущая позиция: "
+                          << pos_ << ", символ: '" << sql_[pos_] << "'" << std::endl;
+                throw std::runtime_error("Ожидалась ',' или ')' после определения колонки.");
             }
         }
 
         skipWhitespace();
+
+        // Проверяем наличие точки с запятой
         if (pos_ >= sql_.size() || sql_[pos_] != ';') {
-            throw std::runtime_error("Expected ';' at the end of CREATE TABLE statement.");
+            throw std::runtime_error("Ожидалась ';' в конце CREATE TABLE запроса.");
         }
-        pos_++;
+        pos_++; // Пропускаем ';'
+
+        skipWhitespace();
+
+        // Проверяем, что после точки с запятой нет лишних символов
+        if (!isEnd()) {
+            throw std::runtime_error("Лишние символы после ';' в CREATE TABLE запросе.");
+        }
 
         return createStmt;
     }
@@ -205,6 +357,47 @@ namespace database {
         return insertStmt;
     }
 
+    std::unique_ptr<SelectStatement> Parser::parseSelect() {
+        auto selectStmt = std::make_unique<SelectStatement>();
+
+        skipWhitespace();
+        std::vector<std::string> columns = {};
+
+        do {
+            columns.push_back(parseIdentifier());
+        } while (sql_[pos_++] == ',');
+
+        selectStmt->columnNames = columns;
+
+        skipWhitespace();
+
+        if (!matchKeyword("FROM")) {
+            throw std::runtime_error("Expected FROM after column list in SELECT statement.");
+        }
+
+        std::string tableName = parseIdentifier();
+
+        selectStmt->tableName = tableName;
+
+        skipWhitespace();
+
+        if (matchKeyword("WHERE")) {
+            std::string predicate;
+            std::string current_token = parseIdentifier();
+
+            while (sql_[pos_] != ';') {
+                predicate += current_token + " ";
+                current_token = parseToken();
+            }
+            predicate += current_token;
+            selectStmt->predicate = predicate;
+        }
+
+        std::cout << "Parsed SELECT statement: " << selectStmt->toString() << std::endl;
+
+        return selectStmt;
+    }
+
     void Parser::skipWhitespace() {
         while (pos_ < sql_.size() && std::isspace(sql_[pos_])) {
             pos_++;
@@ -220,7 +413,7 @@ namespace database {
         }
 
         char firstChar = sql_[pos_];
-        if (!(std::isalpha(firstChar) || firstChar == '_')) {
+        if (!(std::isalpha(firstChar) || firstChar == '_' || firstChar == '*')) {
             throw std::runtime_error("Invalid identifier: must start with a letter or underscore");
         }
 
@@ -235,8 +428,8 @@ namespace database {
     std::string Parser::parseToken() {
         std::string token;
         skipWhitespace();
-        
-        while (pos_ < sql_.size() && !std::isspace(sql_[pos_]) && sql_[pos_] != ',' && 
+
+        while (pos_ < sql_.size() && !std::isspace(sql_[pos_]) && sql_[pos_] != ',' &&
                sql_[pos_] != ')' && sql_[pos_] != ';' && sql_[pos_] != '"') {
             token += sql_[pos_++];
         }
@@ -272,4 +465,4 @@ namespace database {
         return pos_ >= sql_.size();
     }
 
-} // namespace database 
+} // namespace database

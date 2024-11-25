@@ -15,10 +15,10 @@ TEST_F(ExecutorTest, ExecuteCreateTable) {
     auto stmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR);");
     executor.execute(*stmt);
     const auto& table = db.getTable("Test");
-    EXPECT_EQ(table.getName(), "Test");
-    ASSERT_EQ(table.getColumns().size(), 2);
-    EXPECT_EQ(table.getColumns()[0].name, "ID");
-    EXPECT_EQ(table.getColumns()[1].name, "Name");
+    EXPECT_EQ(table.get_name(), "Test");
+    ASSERT_EQ(table.get_scheme().size(), 2);
+    EXPECT_EQ(table.get_scheme()[0].name, "ID");
+    EXPECT_EQ(table.get_scheme()[1].name, "Name");
 }
 
 TEST_F(ExecutorTest, ExecuteInsert) {
@@ -29,7 +29,7 @@ TEST_F(ExecutorTest, ExecuteInsert) {
     executor.execute(*insertStmt);
 
     const auto& table = db.getTable("Test");
-    const auto& data = table.getData();
+    const auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 1);
     EXPECT_EQ(std::get<int>(data[0][0]), 1);
     EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
@@ -46,7 +46,7 @@ TEST_F(ExecutorTest, ExecuteMultipleInserts) {
     executor.execute(*insertStmt2);
 
     const auto& table = db.getTable("Test");
-    const auto& data = table.getData();
+    const auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 2);
     EXPECT_EQ(std::get<int>(data[0][0]), 1);
     EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
@@ -62,7 +62,7 @@ TEST_F(ExecutorTest, ExecuteInsertWithExpression) {
     executor.execute(*insertStmt);
 
     const auto& table = db.getTable("Test");
-    const auto& data = table.getData();
+    const auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 1);
     EXPECT_EQ(std::get<int>(data[0][0]), 1);
     EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
@@ -77,7 +77,7 @@ TEST_F(ExecutorTest, ExecuteInsertWithBoolean) {
     executor.execute(*insertStmt);
 
     const auto& table = db.getTable("Test");
-    const auto& data = table.getData();
+    const auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 1);
     EXPECT_EQ(std::get<int>(data[0][0]), 1);
     EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
@@ -119,7 +119,7 @@ TEST_F(ExecutorTest, ExecuteComplexInsert) {
     executor.execute(*insertStmt);
 
     const auto& table = db.getTable("Test");
-    const auto& data = table.getData();
+    const auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 1);
     EXPECT_EQ(std::get<int>(data[0][0]), 1);
     EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
@@ -141,11 +141,12 @@ TEST_F(ExecutorTest, ComplexScenario) {
         "    PerformanceScore INT"
         ");"
     );
+    
     executor.execute(*createStmt);
 
     const auto& table = db.getTable("Employees");
-    EXPECT_EQ(table.getName(), "Employees");
-    ASSERT_EQ(table.getColumns().size(), 9);
+    EXPECT_EQ(table.get_name(), "Employees");
+    ASSERT_EQ(table.get_scheme().size(), 9);
 
     std::vector<std::string> insertStatements = {
         "INSERT INTO Employees VALUES (1, \"John\", \"Doe\", 30, 50000.50, true, true, 5.5, 95);",
@@ -162,7 +163,7 @@ TEST_F(ExecutorTest, ComplexScenario) {
         executor.execute(*stmt);
     }
 
-    const auto& data = table.getData();
+    const auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 4);
 
     EXPECT_EQ(std::get<int>(data[0][0]), 1);
@@ -205,6 +206,7 @@ TEST_F(ExecutorTest, ComplexScenario) {
     EXPECT_DOUBLE_EQ(std::get<double>(data[3][7]), 3.5);
     EXPECT_EQ(std::get<int>(data[3][8]), 90);
 }
+
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

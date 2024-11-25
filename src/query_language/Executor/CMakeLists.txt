@@ -8,6 +8,8 @@ target_link_libraries(ExecutorTests PRIVATE
     Executor 
     Calculator 
     Parser 
+    Table
+    Database
     gtest 
     gtest_main
 )

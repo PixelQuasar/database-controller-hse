@@ -9,14 +9,14 @@
 #include <memory>
 #include <iostream>
 #include "../../Calculator/Calculator.h"
+#include "../Result/Result.h"
 
 namespace database {
-
     class Executor {
     public:
         Executor(Database& database) : m_database(database) {}
 
-        void execute(const SQLStatement& stmt);
+        Result execute(const SQLStatement& stmt);
 
     private:
         Database& m_database;

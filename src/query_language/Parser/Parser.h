@@ -18,6 +18,7 @@ namespace database {
         std::unique_ptr<SQLStatement> parseStatement();
         std::unique_ptr<CreateTableStatement> parseCreateTable();
         std::unique_ptr<InsertStatement> parseInsert();
+        std::unique_ptr<SelectStatement> parseSelect();
 
         void skipWhitespace();
         std::string parseIdentifier();
