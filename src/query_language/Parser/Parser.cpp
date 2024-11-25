@@ -26,24 +26,12 @@ std::unordered_map<std::string, std::string> Parser::parseAssignValues() {
             break;
         }
 
-        if (!firstColumn) {
-            size_t lastNonSpace = pos_ - 1;
-            while (lastNonSpace > 0 && std::isspace(sql_[lastNonSpace])) {
-                lastNonSpace--;
-            }
-
-            if (sql_[lastNonSpace] != ',') {
-                throw std::runtime_error(
-                    "Expected ',' between column assignments");
-            }
-        }
-
         std::string columnName = parseIdentifier();
         skipWhitespace();
 
         if (pos_ >= sql_.size() || sql_[pos_] != '=') {
-            throw std::runtime_error("Expected '=' after column name: " +
-                                     columnName);
+            std::cout << "Error: Expected '=' after column name: " << columnName << " at position " << pos_ << std::endl;
+            throw std::runtime_error("Expected '=' after column name: " + columnName);
         }
         pos_++;
         skipWhitespace();
@@ -53,25 +41,21 @@ std::unordered_map<std::string, std::string> Parser::parseAssignValues() {
             value = parseStringLiteral();
         } else {
             value = parseExpression();
-            if (!value.empty() && value != "true" && value != "false" &&
-                !std::all_of(value.begin(), value.end(), [](char c) {
-                    return std::isdigit(c) || c == '.' || c == '+' ||
-                           c == '-' || c == '*' || c == '/' || c == '(' ||
-                           c == ')' || std::isspace(c);
-                })) {
-                throw std::runtime_error(
-                    "String value must be enclosed in quotes: " + value);
-            }
         }
 
         columnValuePairs[columnName] = value;
         firstColumn = false;
 
         skipWhitespace();
+        if (pos_ >= sql_.size()) {
+            std::cout << "Error: Unexpected end of input after value at position " << pos_ << std::endl;
+            throw std::runtime_error("Unexpected end of input after value");
+        }
         if (sql_[pos_] == ',') {
             pos_++;
             skipWhitespace();
-            if (!std::isalpha(sql_[pos_]) && sql_[pos_] != '_') {
+            if (pos_ >= sql_.size() || (!std::isalpha(sql_[pos_]) && sql_[pos_] != '_')) {
+                std::cout << "Error: Expected column name after comma at position " << pos_ << std::endl;
                 throw std::runtime_error("Expected column name after comma");
             }
             continue;
@@ -80,12 +64,14 @@ std::unordered_map<std::string, std::string> Parser::parseAssignValues() {
             pos_++;
             break;
         }
+        std::cout << "Error: Expected ',' or ')' after value at position " << pos_ << std::endl;
         throw std::runtime_error("Expected ',' or ')' after value");
     }
     return columnValuePairs;
 }
 
-std::unordered_map<std::string, std::string> Parser::parseAssign(const std::string& sql) {
+std::unordered_map<std::string, std::string> Parser::parseAssign(
+    const std::string& sql) {
     Parser parser(sql);
     return parser.parseAssignValues();
 }
@@ -156,6 +142,14 @@ std::unique_ptr<CreateTableStatement> Parser::parseCreateTable() {
             } else if (matchKeyword("KEY")) {
                 column.isUnique = true;
                 column.isKey = true;
+            } else if (matchKeyword("DEFAULT")) {
+                column.hasDefault = true;
+                skipWhitespace();
+                if (sql_[pos_] == '"') {
+                    column.defaultValue = parseStringLiteral();
+                } else {
+                    column.defaultValue = parseExpression();
+                }
             } else {
                 std::string unknownAttr = parseIdentifier();
                 throw std::runtime_error("Unknown column attribute: " +
@@ -239,6 +233,7 @@ std::unique_ptr<InsertStatement> Parser::parseInsert() {
 
         insertStmt->values = values;
     } else {
+        insertStmt->isMapFormat = true;
         insertStmt->columnValuePairs = parseAssignValues();
     }
 

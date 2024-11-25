@@ -8,6 +8,7 @@
 #include "../AST/SQLStatement.h"
 #include <memory>
 #include <iostream>
+#include <unordered_set>
 #include "../../Calculator/Calculator.h"
 #include "../Result/Result.h"
 

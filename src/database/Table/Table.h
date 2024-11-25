@@ -10,6 +10,7 @@
 #include <string>
 #include <functional>
 #include <set>
+#include <iostream>
 #include "../../types.h"
 #include "../../query_language/AST/SQLStatement.h"
 
@@ -32,6 +33,15 @@ namespace database {
         }
 
         std::vector<RowType> get_rows() const {
+            std::cout << "Getting rows from table " << name_ << std::endl;
+            std::cout << "Current rows size: " << rows_.size() << std::endl;
+            for (const auto& row : rows_) {
+                std::cout << "Row: ";
+                for (const auto& value : row) {
+                    std::cout << database::dBTypeToString(value) << " ";
+                }
+                std::cout << std::endl;
+            }
             return rows_;
         }
 

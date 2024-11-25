@@ -249,7 +249,7 @@ TEST_F(ExecutorTest, AutoIncrement) {
     EXPECT_EQ(std::get<int>(data[1][0]), 1);
     EXPECT_EQ(std::get<int>(data[2][0]), 2);
     EXPECT_EQ(std::get<int>(data[3][0]), 10);
-    EXPECT_EQ(std::get<int>(data[4][0]), 3);
+    EXPECT_EQ(std::get<int>(data[4][0]), 11);
     EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
     EXPECT_EQ(std::get<std::string>(data[1][1]), "Bob");
     EXPECT_EQ(std::get<std::string>(data[2][1]), "Charlie");
@@ -298,6 +298,351 @@ TEST_F(ExecutorTest, KeyConstraint) {
     auto insertStmt3 = Parser::parse("INSERT INTO Test VALUES (2, \"Charlie\");");
     auto result2 = executor.execute(*insertStmt3);
     EXPECT_TRUE(result2.is_ok());
+}
+
+TEST_F(ExecutorTest, ExecuteInsertWithAssignments) {
+    auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR, Age INT, Active BOOL);");
+    executor.execute(*createStmt);
+
+    auto insertStmt1 = Parser::parse("INSERT INTO Test (ID = 1, Name = \"Alice\", Age = 25, Active = true);");
+    auto result1 = executor.execute(*insertStmt1);
+    EXPECT_TRUE(result1.is_ok());
+
+    {
+        const auto& table = db.getTable("Test");
+        const auto data = table.get_rows();
+        ASSERT_EQ(data.size(), 1);
+        EXPECT_EQ(std::get<int>(data[0][0]), 1);
+        EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
+        EXPECT_EQ(std::get<int>(data[0][2]), 25);
+        EXPECT_EQ(std::get<bool>(data[0][3]), true);
+    }
+
+    auto insertStmt2 = Parser::parse("INSERT INTO Test (ID = 2 + 1, Name = \"Bob\", Age = 20 * 2, Active = true && false);");
+    auto result2 = executor.execute(*insertStmt2);
+    EXPECT_TRUE(result2.is_ok());
+
+    {
+        const auto& table = db.getTable("Test");
+        const auto data = table.get_rows();
+        ASSERT_EQ(data.size(), 2);
+        EXPECT_EQ(std::get<int>(data[1][0]), 3);
+        EXPECT_EQ(std::get<std::string>(data[1][1]), "Bob");
+        EXPECT_EQ(std::get<int>(data[1][2]), 40);
+        EXPECT_EQ(std::get<bool>(data[1][3]), false);
+    }
+}
+
+TEST_F(ExecutorTest, ExecuteInvalidInsertWithAssignments) {
+    auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR, Age INT);");
+    executor.execute(*createStmt);
+
+    auto insertStmt1 = Parser::parse("INSERT INTO Test (ID = \"wrong\", Name = 123, Age = true);");
+    auto result1 = executor.execute(*insertStmt1);
+    EXPECT_FALSE(result1.is_ok());
+
+    auto insertStmt2 = Parser::parse("INSERT INTO Test (ID = 1, Name = \"Alice\", Wrong = 25);");
+    auto result2 = executor.execute(*insertStmt2);
+    EXPECT_FALSE(result2.is_ok());
+
+    auto insertStmt3 = Parser::parse("INSERT INTO Test (ID = 1, Name = \"Alice\", ID = 2);");
+    auto result3 = executor.execute(*insertStmt3);
+    EXPECT_FALSE(result3.is_ok());
+
+    auto insertStmt4 = Parser::parse("INSERT INTO Test (ID = 1, Name = \"Alice\");");
+    auto result4 = executor.execute(*insertStmt4);
+    EXPECT_FALSE(result4.is_ok());
+
+    const auto& table = db.getTable("Test");
+    const auto& data = table.get_rows();
+    ASSERT_EQ(data.size(), 0);
+}
+
+TEST_F(ExecutorTest, ExecuteInsertWithPartialAssignments) {
+    auto createStmt = Parser::parse(
+        "CREATE TABLE Test ("
+        "    ID INT,"
+        "    Name VARCHAR DEFAULT \"Unknown\","
+        "    Age INT DEFAULT 18,"
+        "    Active BOOL DEFAULT true"
+        ");"
+    );
+    executor.execute(*createStmt);
+
+    auto insertStmt = Parser::parse("INSERT INTO Test (ID = 1, Age = 25);");
+    auto result = executor.execute(*insertStmt);
+    EXPECT_TRUE(result.is_ok());
+
+    const auto& table = db.getTable("Test");
+    const auto& data = table.get_rows();
+    ASSERT_EQ(data.size(), 1);
+    EXPECT_EQ(std::get<int>(data[0][0]), 1);
+    EXPECT_EQ(std::get<int>(data[0][2]), 25);
+    EXPECT_EQ(std::get<bool>(data[0][3]), true);
+    EXPECT_EQ(std::get<std::string>(data[0][1]), "Unknown");
+}
+
+TEST_F(ExecutorTest, ExecuteInsertWithMixedSyntax) {
+    auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR, Age INT);");
+    executor.execute(*createStmt);
+
+    auto insertStmt1 = Parser::parse("INSERT INTO Test VALUES (1, \"Alice\", 25);");
+    auto result1 = executor.execute(*insertStmt1);
+    EXPECT_TRUE(result1.is_ok());
+
+    auto insertStmt2 = Parser::parse("INSERT INTO Test (ID = 2, Name = \"Bob\", Age = 30);");
+    auto result2 = executor.execute(*insertStmt2);
+    EXPECT_TRUE(result2.is_ok());
+
+    const auto& table = db.getTable("Test");
+    const auto& data = table.get_rows();
+    ASSERT_EQ(data.size(), 2);
+    
+    EXPECT_EQ(std::get<int>(data[0][0]), 1);
+    EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
+    EXPECT_EQ(std::get<int>(data[0][2]), 25);
+
+    EXPECT_EQ(std::get<int>(data[1][0]), 2);
+    EXPECT_EQ(std::get<std::string>(data[1][1]), "Bob");
+    EXPECT_EQ(std::get<int>(data[1][2]), 30);
+}
+
+TEST_F(ExecutorTest, ExecuteInsertWithDefaults) {
+    auto createStmt = Parser::parse(
+        "CREATE TABLE Test ("
+        "    ID INT,"
+        "    Name VARCHAR DEFAULT \"Unknown\","
+        "    Age INT DEFAULT 18,"
+        "    Active BOOL DEFAULT true"
+        ");"
+    );
+    executor.execute(*createStmt);
+
+    auto insertStmt1 = Parser::parse("INSERT INTO Test (ID = 1);");
+    auto result1 = executor.execute(*insertStmt1);
+    EXPECT_TRUE(result1.is_ok());
+
+    {
+        const auto& table = db.getTable("Test");
+        const auto& data = table.get_rows();
+        ASSERT_EQ(data.size(), 1);
+        EXPECT_EQ(std::get<int>(data[0][0]), 1);
+        EXPECT_EQ(std::get<std::string>(data[0][1]), "Unknown");
+        EXPECT_EQ(std::get<int>(data[0][2]), 18);
+        EXPECT_EQ(std::get<bool>(data[0][3]), true);
+    }
+
+    auto insertStmt2 = Parser::parse(
+        "INSERT INTO Test (ID = 2, Name = \"John\", Age = 25, Active = false);"
+    );
+    
+    auto result2 = executor.execute(*insertStmt2);
+    EXPECT_TRUE(result2.is_ok());
+    {
+        const auto& table = db.getTable("Test");
+        const auto& data = table.get_rows();
+        ASSERT_EQ(data.size(), 2);
+        EXPECT_EQ(std::get<int>(data[1][0]), 2);
+        EXPECT_EQ(std::get<std::string>(data[1][1]), "John");
+        EXPECT_EQ(std::get<int>(data[1][2]), 25);
+        EXPECT_EQ(std::get<bool>(data[1][3]), false);
+    }
+}
+
+TEST_F(ExecutorTest, ComplexTableOperations) {
+    auto createStmt = Parser::parse(
+        "CREATE TABLE Employees ("
+        "    ID INT AUTOINCREMENT KEY,"       
+        "    EmpCode INT UNIQUE,"
+        "    FirstName VARCHAR DEFAULT \"New\","  
+        "    LastName VARCHAR,"                   
+        "    Age INT DEFAULT 18,"                 
+        "    Salary DOUBLE DEFAULT 1000.0,"       
+        "    IsActive BOOL DEFAULT true"          
+        ");"
+    );
+    auto result = executor.execute(*createStmt);
+    EXPECT_TRUE(result.is_ok());
+
+    auto insertStmt1 = Parser::parse(
+        "INSERT INTO Employees (EmpCode = 101, LastName = \"Doe\");"
+    );
+    result = executor.execute(*insertStmt1);
+    EXPECT_TRUE(result.is_ok());
+
+    {
+        const auto& table = db.getTable("Employees");
+        const auto data = table.get_rows();
+        ASSERT_EQ(data.size(), 1);
+        EXPECT_EQ(std::get<int>(data[0][0]), 0);           
+        EXPECT_EQ(std::get<int>(data[0][1]), 101);         
+        EXPECT_EQ(std::get<std::string>(data[0][2]), "New"); 
+        EXPECT_EQ(std::get<std::string>(data[0][3]), "Doe"); 
+        EXPECT_EQ(std::get<int>(data[0][4]), 18);          
+        EXPECT_EQ(std::get<double>(data[0][5]), 1000.0);   
+        EXPECT_EQ(std::get<bool>(data[0][6]), true);       
+    }
+
+    auto insertStmt2 = Parser::parse(
+        "INSERT INTO Employees ("
+        "    EmpCode = 102, "
+        "    FirstName = \"John\", "
+        "    LastName = \"Smith\", "
+        "    Age = 25, "
+        "    Salary = 2000.0, "
+        "    IsActive = false"
+        ");"
+    );
+    result = executor.execute(*insertStmt2);
+    EXPECT_TRUE(result.is_ok());
+
+    auto insertStmt3 = Parser::parse(
+        "INSERT INTO Employees ("
+        "    EmpCode = 100 + 3, "
+        "    FirstName = \"Bob\", "
+        "    LastName = \"Johnson\", "
+        "    Age = 20 + 5, "
+        "    Salary = 1500.0 * 2, "
+        "    IsActive = true && true"
+        ");"
+    );
+    result = executor.execute(*insertStmt3);
+    EXPECT_TRUE(result.is_ok());
+
+    {
+        const auto& table = db.getTable("Employees");
+        const auto data = table.get_rows();
+        ASSERT_EQ(data.size(), 3);
+
+        EXPECT_EQ(std::get<int>(data[1][0]), 1);           
+        EXPECT_EQ(std::get<int>(data[1][1]), 102);         
+        EXPECT_EQ(std::get<std::string>(data[1][2]), "John");
+        EXPECT_EQ(std::get<std::string>(data[1][3]), "Smith");
+        EXPECT_EQ(std::get<int>(data[1][4]), 25);
+        EXPECT_EQ(std::get<double>(data[1][5]), 2000.0);
+        EXPECT_EQ(std::get<bool>(data[1][6]), false);
+
+        EXPECT_EQ(std::get<int>(data[2][0]), 2);           
+        EXPECT_EQ(std::get<int>(data[2][1]), 103);         
+        EXPECT_EQ(std::get<std::string>(data[2][2]), "Bob");
+        EXPECT_EQ(std::get<std::string>(data[2][3]), "Johnson");
+        EXPECT_EQ(std::get<int>(data[2][4]), 25);
+        EXPECT_EQ(std::get<double>(data[2][5]), 3000.0);
+        EXPECT_EQ(std::get<bool>(data[2][6]), true);
+    }
+
+    auto insertStmt4 = Parser::parse(
+        "INSERT INTO Employees (EmpCode = 101, LastName = \"Wilson\");"
+    );
+    result = executor.execute(*insertStmt4);
+    EXPECT_FALSE(result.is_ok());
+
+    auto insertStmt5 = Parser::parse(
+        "INSERT INTO Employees (ID = 100, EmpCode = 104, LastName = \"Brown\");"
+    );
+    result = executor.execute(*insertStmt5);
+    EXPECT_TRUE(result.is_ok());
+
+    {
+        const auto& table = db.getTable("Employees");
+        const auto data = table.get_rows();
+        ASSERT_EQ(data.size(), 4);
+    }
+}
+
+TEST_F(ExecutorTest, ComplexTableOperationsWithValues) {
+    auto createStmt = Parser::parse(
+        "CREATE TABLE Employees ("
+        "    ID INT AUTOINCREMENT KEY,"       
+        "    EmpCode INT UNIQUE,"
+        "    FirstName VARCHAR DEFAULT \"New\","  
+        "    LastName VARCHAR,"                   
+        "    Age INT DEFAULT 18,"                 
+        "    Salary DOUBLE DEFAULT 1000.0,"       
+        "    IsActive BOOL DEFAULT true"          
+        ");"
+    );
+    auto result = executor.execute(*createStmt);
+    EXPECT_TRUE(result.is_ok());
+
+    // Проверяем вставку с минимальным набором полей (используя NULL для автоинкремента и значения по умолчанию)
+    auto insertStmt1 = Parser::parse(
+        "INSERT INTO Employees VALUES (NULL, 101, NULL, \"Doe\", NULL, NULL, NULL);"
+    );
+    result = executor.execute(*insertStmt1);
+    EXPECT_TRUE(result.is_ok());
+
+    {
+        const auto& table = db.getTable("Employees");
+        const auto data = table.get_rows();
+        ASSERT_EQ(data.size(), 1);
+        EXPECT_EQ(std::get<int>(data[0][0]), 0);           // ID: автоинкремент с 0
+        EXPECT_EQ(std::get<int>(data[0][1]), 101);         // EmpCode
+        EXPECT_EQ(std::get<std::string>(data[0][2]), "New"); // FirstName по умолчанию
+        EXPECT_EQ(std::get<std::string>(data[0][3]), "Doe"); // LastName
+        EXPECT_EQ(std::get<int>(data[0][4]), 18);          // Age по умолчанию
+        EXPECT_EQ(std::get<double>(data[0][5]), 1000.0);   // Salary по умолчанию
+        EXPECT_EQ(std::get<bool>(data[0][6]), true);       // IsActive по умолчанию
+    }
+
+    // Проверяем вставку с полным набором полей
+    auto insertStmt2 = Parser::parse(
+        "INSERT INTO Employees VALUES (NULL, 102, \"John\", \"Smith\", 25, 2000.0, false);"
+    );
+    result = executor.execute(*insertStmt2);
+    EXPECT_TRUE(result.is_ok());
+
+    // Проверяем вставку с выражениями
+    auto insertStmt3 = Parser::parse(
+        "INSERT INTO Employees VALUES (NULL, 100 + 3, \"Bob\", \"Johnson\", 20 + 5, 1500.0 * 2, true && true);"
+    );
+    result = executor.execute(*insertStmt3);
+    EXPECT_TRUE(result.is_ok());
+
+    {
+        const auto& table = db.getTable("Employees");
+        const auto data = table.get_rows();
+        ASSERT_EQ(data.size(), 3);
+
+        // Проверяем вторую запись (полный набор полей)
+        EXPECT_EQ(std::get<int>(data[1][0]), 1);           // ID: автоинкремент
+        EXPECT_EQ(std::get<int>(data[1][1]), 102);         // EmpCode
+        EXPECT_EQ(std::get<std::string>(data[1][2]), "John");
+        EXPECT_EQ(std::get<std::string>(data[1][3]), "Smith");
+        EXPECT_EQ(std::get<int>(data[1][4]), 25);
+        EXPECT_EQ(std::get<double>(data[1][5]), 2000.0);
+        EXPECT_EQ(std::get<bool>(data[1][6]), false);
+
+        // Проверяем третью запись (с выражениями)
+        EXPECT_EQ(std::get<int>(data[2][0]), 2);           // ID: автоинкремент
+        EXPECT_EQ(std::get<int>(data[2][1]), 103);         // EmpCode: 100 + 3
+        EXPECT_EQ(std::get<std::string>(data[2][2]), "Bob");
+        EXPECT_EQ(std::get<std::string>(data[2][3]), "Johnson");
+        EXPECT_EQ(std::get<int>(data[2][4]), 25);          // 20 + 5
+        EXPECT_EQ(std::get<double>(data[2][5]), 3000.0);   // 1500.0 * 2
+        EXPECT_EQ(std::get<bool>(data[2][6]), true);       // true && true
+    }
+
+    // Проверяем ограничение уникальности
+    auto insertStmt4 = Parser::parse(
+        "INSERT INTO Employees VALUES (NULL, 101, \"Test\", \"Wilson\", 30, 2500.0, true);"
+    );
+    result = executor.execute(*insertStmt4);
+    EXPECT_FALSE(result.is_ok());  // Должно быть false из-за дублирования EmpCode
+
+    // Проверяем попытку установить ID вручную
+    auto insertStmt5 = Parser::parse(
+        "INSERT INTO Employees VALUES (100, 104, \"Test\", \"Brown\", 35, 3000.0, true);"
+    );
+    result = executor.execute(*insertStmt5);
+    EXPECT_TRUE(result.is_ok());  // Теперь это должно быть разрешено, но ID будет установлен как 100
+
+    {
+        const auto& table = db.getTable("Employees");
+        const auto data = table.get_rows();
+        ASSERT_EQ(data.size(), 4);  // Размер должен увеличиться на 1
+        EXPECT_EQ(std::get<int>(data[3][0]), 100);  // Проверяем, что ID установлен как 100
+    }
 }
 
 int main(int argc, char **argv) {

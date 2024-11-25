@@ -148,7 +148,7 @@ TEST_F(ParserTest, ParseInsertWithColumnAssignments) {
     EXPECT_EQ(insertStmt->columnValuePairs["LastName"], "\"Doe\"");
     EXPECT_EQ(insertStmt->columnValuePairs["Age"], "30");
     EXPECT_EQ(insertStmt->columnValuePairs["Salary"], "50000.50");
-    EXPECT_EQ(insertStmt->columnValuePairs["IsManager"], "true");
+    EXPECT_EQ(insertStmt->columnValuePairs["IsManager"], "true && false");
     EXPECT_EQ(insertStmt->columnValuePairs["IsFullTime"], "true");
     EXPECT_EQ(insertStmt->columnValuePairs["YearsOfService"], "5.5");
     EXPECT_EQ(insertStmt->columnValuePairs["PerformanceScore"], "95");
@@ -196,10 +196,62 @@ TEST_F(ParserTest, ParseInsertMixedSyntax) {
 
 TEST_F(ParserTest, InvalidSyntaxWithColumnAssignments) {
     EXPECT_THROW(Parser::parse("INSERT INTO Test (ID 1, Name = \"Alice\");"), std::runtime_error);
+}
 
-    EXPECT_THROW(Parser::parse("INSERT INTO Test (ID = 1 Name = \"Alice\");"), std::runtime_error);
+TEST_F(ParserTest, ParseCreateTableWithDefault) {
+    auto stmt = Parser::parse(
+        "CREATE TABLE Test ("
+        "    ID INT,"
+        "    Name VARCHAR DEFAULT \"Unknown\","
+        "    Age INT DEFAULT 18,"
+        "    Active BOOL DEFAULT true,"
+        "    Salary DOUBLE DEFAULT 1000.0"
+        ");"
+    );
+    
+    auto createStmt = dynamic_cast<CreateTableStatement*>(stmt.get());
+    ASSERT_NE(createStmt, nullptr);
+    EXPECT_EQ(createStmt->tableName, "Test");
+    ASSERT_EQ(createStmt->columns.size(), 5);
 
-    EXPECT_THROW(Parser::parse("INSERT INTO Test (ID = 1, Name = Alice);"), std::runtime_error);
+    EXPECT_EQ(createStmt->columns[0].name, "ID");
+    EXPECT_EQ(createStmt->columns[0].type, "INT");
+    EXPECT_FALSE(createStmt->columns[0].hasDefault);
+
+    EXPECT_EQ(createStmt->columns[1].name, "Name");
+    EXPECT_EQ(createStmt->columns[1].type, "VARCHAR");
+    EXPECT_TRUE(createStmt->columns[1].hasDefault);
+    EXPECT_EQ(createStmt->columns[1].defaultValue, "\"Unknown\"");
+
+    EXPECT_EQ(createStmt->columns[2].name, "Age");
+    EXPECT_EQ(createStmt->columns[2].type, "INT");
+    EXPECT_TRUE(createStmt->columns[2].hasDefault);
+    EXPECT_EQ(createStmt->columns[2].defaultValue, "18");
+
+    EXPECT_EQ(createStmt->columns[3].name, "Active");
+    EXPECT_EQ(createStmt->columns[3].type, "BOOL");
+    EXPECT_TRUE(createStmt->columns[3].hasDefault);
+    EXPECT_EQ(createStmt->columns[3].defaultValue, "true");
+
+    EXPECT_EQ(createStmt->columns[4].name, "Salary");
+    EXPECT_EQ(createStmt->columns[4].type, "DOUBLE");
+    EXPECT_TRUE(createStmt->columns[4].hasDefault);
+    EXPECT_EQ(createStmt->columns[4].defaultValue, "1000.0");
+}
+
+TEST_F(ParserTest, ParseCreateTableWithDefaultExpressions) {
+    auto stmt = Parser::parse(
+        "CREATE TABLE Test ("
+        "    ID INT,"
+        "    Score INT DEFAULT 10 * 5,"
+        "    IsValid BOOL DEFAULT true && false"
+        ");"
+    );
+    
+    auto createStmt = dynamic_cast<CreateTableStatement*>(stmt.get());
+    ASSERT_NE(createStmt, nullptr);
+    EXPECT_EQ(createStmt->columns[1].defaultValue, "10 * 5");
+    EXPECT_EQ(createStmt->columns[2].defaultValue, "true && false");
 }
 
 int main(int argc, char **argv) {

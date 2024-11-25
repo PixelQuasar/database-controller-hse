@@ -13,6 +13,21 @@
 #include "../../Calculator/Calculator.h"
 
 namespace database {
+
+    std::string dBTypeToString(DBType value) {
+        std::string str_value;
+        if (std::holds_alternative<int>(value)) {
+            str_value = std::to_string(std::get<int>(value));
+         } else if (std::holds_alternative<double>(value)) {
+            str_value = std::to_string(std::get<double>(value));
+        } else if (std::holds_alternative<bool>(value)) {
+            str_value = std::to_string(std::get<bool>(value));
+        } else if (std::holds_alternative<std::string>(value)) {
+            str_value = std::get<std::string>(value);
+        }
+        return str_value;
+    }
+
     std::string Table::convert_to_byte_buffer() {
         std::string buffer;
         for (auto& row : rows_) {
@@ -132,9 +147,35 @@ namespace database {
     }
 
     void Table::insert_row(RowType row) {
+        std::cout << "Inserting row into table " << name_ << std::endl;
+        std::cout << "Current table size: " << rows_.size() << std::endl;
+        std::cout << "Row values: ";
+        for (const auto& value : row) {
+            std::cout << database::dBTypeToString(value) << " ";
+        }
+        std::cout << std::endl;
 
         if (row.size() > scheme_.size()) {
             throw std::runtime_error("Number of values exceeds number of columns.");
+        }
+
+        for (size_t i = 0; i < scheme_.size(); ++i) {
+            if (scheme_[i].isAutoIncrement) {
+                if (!std::holds_alternative<int>(row[i])) {
+                    throw std::runtime_error("AutoIncrement is only applicable to integer columns.");
+                }
+                
+                int value = std::get<int>(row[i]);
+                if (value == 0) {
+                    row[i] = autoIncrementValues_[scheme_[i].name]++;
+                } else {
+                    if (value >= autoIncrementValues_[scheme_[i].name]) {
+                        autoIncrementValues_[scheme_[i].name] = value + 1;
+                    } else {
+                        throw std::runtime_error("Cannot set AUTOINCREMENT value less than current sequence: " + scheme_[i].name);
+                    }
+                }
+            }
         }
 
         for (size_t i = 0; i < scheme_.size(); ++i) {
@@ -152,17 +193,18 @@ namespace database {
                 }
                 indixes_[scheme_[i].name].insert(row[i]);
             }
-
-            if (scheme_[i].isAutoIncrement) {
-                if (std::holds_alternative<int>(row[i]) && std::get<int>(row[i]) == 0) {
-                    row[i] = autoIncrementValues_[scheme_[i].name]++;
-                } else if (!std::holds_alternative<int>(row[i])) {
-                    throw std::runtime_error("AutoIncrement is only applicable to integer columns.");
-                }
-            }
         }
 
         rows_.push_back(row);
+        std::cout << "New table size after insert: " << rows_.size() << std::endl;
+        std::cout << "Current rows content:" << std::endl;
+        for (const auto& r : rows_) {
+            std::cout << "Row: ";
+            for (const auto& value : r) {
+                std::cout << database::dBTypeToString(value) << " ";
+            }
+            std::cout << std::endl;
+        }
     }
 
     void Table::addAutoIncrement(const std::string& columnName) {
