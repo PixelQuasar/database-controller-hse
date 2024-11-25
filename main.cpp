@@ -58,10 +58,10 @@ int main() {
 
     auto executor = database::Executor(db);
 
-    executor.execute(*database::Parser::parse(create_str));
+    executor.execute(database::Parser::parse(create_str));
 
     for (auto insert_str : insert_strs) {
-        executor.execute(*database::Parser::parse(insert_str));
+        executor.execute(database::Parser::parse(insert_str));
     }
 
     std::string update_str =
@@ -77,7 +77,7 @@ int main() {
     std::string select_str =
         "SELECT FirstName, Salary FROM Employees WHERE Salary == 0.0";
 
-    auto result = executor.execute(*database::Parser::parse(select_str));
+    auto result = executor.execute(database::Parser::parse(select_str));
 
     if (!result.is_ok()) {
         throw std::runtime_error("select error");

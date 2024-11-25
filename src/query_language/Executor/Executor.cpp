@@ -3,10 +3,8 @@
 //
 
 #include "Executor.h"
-
 #include <iostream>
 #include <regex>
-
 #include "../../Calculator/Calculator.h"
 #include "../../database/Database/Database.h"
 #include "../AST/SQLStatement.h"
@@ -27,7 +25,7 @@ std::string dBTypeToString(DBType value) {
     return str_value;
 }
 
-Result Executor::execute(const SQLStatement &stmt) {
+Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
     Result result = {};
     try {
         calculator::Calculator calc;
@@ -39,6 +37,16 @@ Result Executor::execute(const SQLStatement &stmt) {
             std::vector<DBType> row;
             const auto &table = m_database.getTable(insertStmt->tableName);
             const auto &columns = table.get_scheme();
+    Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
+        Result result = {};
+        try {
+            calculator::Calculator calc;
+            if (const auto *createStmt = dynamic_cast<const CreateTableStatement *>(stmt.get())) {
+                m_database.createTable(createStmt->tableName, createStmt->columns);
+            } else if (const auto *insertStmt = dynamic_cast<const InsertStatement *>(stmt.get())) {
+                std::vector<DBType> row;
+                const auto &table = m_database.getTable(insertStmt->tableName);
+                const auto &columns = table.get_scheme();
 
             if (insertStmt->values.size() > columns.size()) {
                 throw std::runtime_error("Too many values provided.");
@@ -76,16 +84,14 @@ Result Executor::execute(const SQLStatement &stmt) {
                                                  columns[i].name);
                     }
 
-                    row.push_back(value);
-                } catch (const std::exception &e) {
-                    throw std::runtime_error(
-                        "Error processing value for column " + columns[i].name +
-                        ": " + e.what());
+                        row.push_back(value);
+                    } catch (const std::exception &e) {
+                        throw std::runtime_error("Error processing value for column " +
+                                               columns[i].name + ": " + e.what());
+                    }
                 }
-            }
-            m_database.insertInto(insertStmt->tableName, row);
-        } else if (const auto *insertStmt =
-                       dynamic_cast<const SelectStatement *>(&stmt)) {
+                m_database.insertInto(insertStmt->tableName, row);
+            } else if (const auto *insertStmt = dynamic_cast<const SelectStatement *>(stmt.get())) {
             auto table = m_database.getTable(insertStmt->tableName);
 
             // check if columns are valid
@@ -177,4 +183,4 @@ Result Executor::execute(const SQLStatement &stmt) {
     return result;
 }
 
-}  // namespace database
+} // namespace database

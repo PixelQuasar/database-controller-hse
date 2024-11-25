@@ -11,15 +11,15 @@ namespace database {
 
     class Parser {
     public:
-        static std::unique_ptr<SQLStatement> parse(const std::string& sql);
+        static std::shared_ptr<SQLStatement> parse(const std::string& sql);
 
     private:
         Parser(const std::string& sql);
-        std::unique_ptr<SQLStatement> parseStatement();
-        std::unique_ptr<CreateTableStatement> parseCreateTable();
-        std::unique_ptr<InsertStatement> parseInsert();
-        std::unique_ptr<SelectStatement> parseSelect();
-        std::unique_ptr<UpdateStatement> parseUpdate();
+        std::shared_ptr<SQLStatement> parseStatement();
+        std::shared_ptr<CreateTableStatement> parseCreateTable();
+        std::shared_ptr<InsertStatement> parseInsert();
+        std::shared_ptr<SelectStatement> parseSelect();
+        std::shared_ptr<UpdateStatement> parseUpdate();
         std::unordered_map<std::string, std::string> parseAssignValues();
 
         void skipWhitespace();

@@ -11,9 +11,9 @@
 #include <set>
 #include <string>
 #include <vector>
-
-#include "../../query_language/AST/SQLStatement.h"
+#include <cstring>
 #include "../../types.h"
+#include "../../query_language/AST/SQLStatement.h"
 
 namespace database {
 class Table {
