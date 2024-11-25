@@ -1,10 +1,11 @@
-#include "Database.h"
 #include <gtest/gtest.h>
+
+#include "Database.h"
 
 using namespace database;
 
 class DatabaseTest : public ::testing::Test {
-protected:
+   protected:
     Database db;
 };
 
@@ -25,4 +26,4 @@ TEST_F(DatabaseTest, InsertIntoTable) {
     ASSERT_EQ(data.size(), 1);
     EXPECT_EQ(std::get<int>(data[0][0]), 1);
     EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
-} 
+}
