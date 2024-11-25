@@ -20,17 +20,14 @@ namespace database {
             calculator::Calculator calc;
             if (const auto *createStmt =
                     dynamic_cast<const CreateTableStatement *>(stmt.get())) {
-                std::cout << "Executing CREATE TABLE statement" << std::endl;
                 m_database.createTable(createStmt->tableName, createStmt->columns);
             } else if (const auto *insertStmt =
                     dynamic_cast<const InsertStatement *>(stmt.get())) {
-                std::cout << "Executing INSERT statement" << std::endl;
                 const auto &table = m_database.getTable(insertStmt->tableName);
                 const auto &columns = table.get_scheme();
                 auto offsets = table.get_column_to_row_offset();
 
                 if (!insertStmt->isMapFormat) {
-                    std::cout << "Processing VALUES format" << std::endl;
                     if (insertStmt->values.size() > columns.size()) {
                         throw std::runtime_error("Too many values provided");
                     }
@@ -99,22 +96,16 @@ namespace database {
                     }
                     m_database.insertInto(insertStmt->tableName, row);
                 } else {
-                    std::cout << "Processing column assignments format"
-                              << std::endl;
                     std::vector<DBType> row(columns.size());
                     std::unordered_set<std::string> providedColumns;
 
                     for (const auto &[columnName, value] :
                             insertStmt->columnValuePairs) {
                         if (!offsets.count(columnName)) {
-                            std::cout << "Error: Unknown column: " << columnName
-                                      << std::endl;
                             throw std::runtime_error("Unknown column: " +
                                                      columnName);
                         }
                         if (!providedColumns.insert(columnName).second) {
-                            std::cout << "Error: Duplicate column in assignment: "
-                                      << columnName << std::endl;
                             throw std::runtime_error(
                                     "Duplicate column in assignment: " + columnName);
                         }
@@ -123,9 +114,6 @@ namespace database {
                     for (const auto &column : columns) {
                         if (!column.hasDefault && !column.isAutoIncrement &&
                             !providedColumns.count(column.name)) {
-                            std::cout
-                                    << "Error: Missing required column: " << column.name
-                                    << std::endl;
                             throw std::runtime_error(
                                     "Missing value for required column: " +
                                     column.name);
@@ -174,15 +162,11 @@ namespace database {
                                  !std::holds_alternative<bool>(value)) ||
                                 (column.type == "VARCHAR" &&
                                  !std::holds_alternative<std::string>(value))) {
-                                std::cout << "Error: Type mismatch for column "
-                                          << columnName << std::endl;
                                 throw std::runtime_error(
                                         "Type mismatch for column " + columnName);
                             }
                             row[columnIndex] = value;
                         } catch (const std::exception &e) {
-                            std::cout << "Error evaluating " << columnName << ": "
-                                      << e.what() << std::endl;
                             throw std::runtime_error(
                                     "Error processing value for column " + columnName +
                                     ": " + e.what());
@@ -244,19 +228,35 @@ namespace database {
                         throw std::invalid_argument("Invalid value name: " + key +
                                                     ".");
                     }
-                }
 
-                // build the predicate
-                auto filter_predicate = [table, insertStmt,
-                        calc](const std::vector<DBType> &row) {
-                    std::unordered_map<std::string, std::string> row_values = {};
-                    for (const auto &[name, index] :
-                            table.get_column_to_row_offset()) {
-                        row_values[name] = dBTypeToString(row[index]);
+                    auto parsed = calc.evaluate(value);
+
+                    auto column = table.get_scheme()[table.get_column_to_row_offset()[key]];
+
+                    if (column.isAutoIncrement) {
+                        throw std::invalid_argument("Cannot update autoincrement column: " + key + ".");
                     }
-                    return calculator::safeGet<bool>(
-                            calc.evaluate(insertStmt->predicate, row_values));
-                };
+
+                    if (column.isKey) {
+                        throw std::invalid_argument("Cannot update key column: " + key + ".");
+                    }
+
+                    if (column.isUnique) {
+                        throw std::invalid_argument("Cannot update unique column: " + key + ".");
+                    }
+
+                    if ((column.type == "INT" &&
+                         !std::holds_alternative<int>(parsed)) ||
+                        (column.type == "DOUBLE" &&
+                         !std::holds_alternative<double>(parsed)) ||
+                        (column.type == "BOOL" &&
+                         !std::holds_alternative<bool>(parsed)) ||
+                        (column.type == "VARCHAR" &&
+                         !std::holds_alternative<std::string>(parsed))) {
+                        throw std::runtime_error(
+                                "Type mismatch for column " + key);
+                    }
+                }
 
                 auto updater = [table, insertStmt, calc](std::vector<DBType> &row) {
                     for (const auto &[key, value] : insertStmt->newValues) {
@@ -271,13 +271,46 @@ namespace database {
                         return true;
                     });
                 } else {
+                    // build the predicate
+                    auto filter_predicate = [table, insertStmt,
+                            calc](const std::vector<DBType> &row) {
+                        std::unordered_map<std::string, std::string> row_values = {};
+                        for (const auto &[name, index] :
+                                table.get_column_to_row_offset()) {
+                            row_values[name] = dBTypeToString(row[index]);
+                        }
+                        return calculator::safeGet<bool>(
+                                calc.evaluate(insertStmt->predicate, row_values));
+                    };
+
                     table.update_many(updater, filter_predicate);
+                }
+            } else if (const auto *insertStmt =
+                    dynamic_cast<const DeleteStatement *>(stmt.get())) {
+                Table &table = m_database.getTable(insertStmt->tableName);
+
+                if (insertStmt->predicate.empty()) {
+                    table.drop_rows();
+                } else {
+                    // build the predicate
+                    auto filter_predicate = [table, insertStmt,
+                            calc](const std::vector<DBType> &row) {
+                        std::unordered_map<std::string, std::string> row_values = {};
+                        for (const auto &[name, index] :
+                                table.get_column_to_row_offset()) {
+                            row_values[name] = dBTypeToString(row[index]);
+                        }
+                        return calculator::safeGet<bool>(
+                                calc.evaluate(insertStmt->predicate, row_values));
+                    };
+
+                    table.remove_many(filter_predicate);
                 }
             } else {
                 throw std::runtime_error("Unsupported SQL statement.");
             }
         } catch (const std::exception &e) {
-            std::cout << "Error in execute: " << e.what() << std::endl;
+
             result = Result::errorResult(std::string(e.what()));
         }
         return result;

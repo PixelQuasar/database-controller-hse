@@ -57,6 +57,10 @@ class Table {
     void remove_many(
         const std::function<bool(const std::vector<DBType>&)>& predicate);
 
+    void drop_rows() {
+        rows_ = {};
+    }
+
     std::string convert_to_byte_buffer();
 
     void load_from_byte_buffer(const std::string& buffer);
