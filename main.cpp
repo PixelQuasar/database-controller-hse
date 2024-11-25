@@ -46,15 +46,15 @@ int main() {
 
     auto executor = database::Executor(db);
 
-    executor.execute(*database::Parser::parse(create_str));
+    executor.execute(database::Parser::parse(create_str));
 
     for (auto insert_str : insert_strs) {
-        executor.execute(*database::Parser::parse(insert_str));
+        executor.execute(database::Parser::parse(insert_str));
     }
 
     std::string select_str = "SELECT FirstName, Salary FROM Employees WHERE Salary > 60000.00;";
 
-    auto result = executor.execute(*database::Parser::parse(select_str));
+    auto result = executor.execute(database::Parser::parse(select_str));
 
     for (auto row : result.get_payload()) {
         std::cout << database::dBTypeToString(row["FirstName"]) << " " << database::dBTypeToString(row["Salary"]) << std::endl;
