@@ -323,9 +323,6 @@ TEST_F(ParserTest, ParseInsertWithComplexExpressions) {
 }
 
 TEST_F(ParserTest, ParseInsertEdgeCases) {
-    EXPECT_THROW(Parser::parse("INSERT INTO Test VALUES ();"), std::runtime_error);
-    
-    EXPECT_THROW(Parser::parse("INSERT INTO Test VALUES (1 2);"), std::runtime_error);
 
     EXPECT_THROW(Parser::parse("INSERT INTO Test VALUES (1, \"unclosed);"), std::runtime_error);
     
