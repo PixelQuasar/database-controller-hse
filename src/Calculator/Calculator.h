@@ -40,7 +40,7 @@ namespace calculator {
         Value evaluate(
             const std::string& expression,
             const std::unordered_map<std::string, std::string>& external_values = {}
-        );
+        ) const;
     
     private:
         std::vector<std::string> tokenize(

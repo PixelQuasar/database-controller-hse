@@ -14,11 +14,11 @@ namespace database {
     Result Executor::execute(const SQLStatement& stmt) {
         Result result = {};
         try {
+            calculator::Calculator calc;
             if (const auto *createStmt = dynamic_cast<const CreateTableStatement *>(&stmt)) {
                 m_database.createTable(createStmt->tableName, createStmt->columns);
             } else if (const auto *insertStmt = dynamic_cast<const InsertStatement *>(&stmt)) {
                 std::vector<DBType> row;
-                calculator::Calculator calc;
                 const auto &table = m_database.getTable(insertStmt->tableName);
                 const auto &columns = table.get_scheme();
 
@@ -50,16 +50,44 @@ namespace database {
             } else if (const auto *insertStmt = dynamic_cast<const SelectStatement *>(&stmt)) {
                 auto table = m_database.getTable(insertStmt->tableName);
 
-//                auto filter_predicate = [table](const std::vector<DBType>& row){
-//                    std::unordered_map<std::string, DBType> row_values = {};
-//                    for (const auto& [name, index] : table.get_column_to_row_offset()) {
-//                        row_values[name] = row[index];
-//                    }
-//                    auto calc_result = calc.evaluate(valStr);
-//                };
-//
-//                filter_predicate({});
+                if (insertStmt->column_names[0] != "*") {
 
+                }
+                auto filter_predicate = [table, insertStmt, calc](const std::vector<DBType>& row) {
+                    std::unordered_map<std::string, std::string> row_values = {};
+                    for (const auto& [name, index] : table.get_column_to_row_offset()) {
+                        std::string str_value;
+                        if (std::holds_alternative<int>(row[index])) {
+                            str_value = std::to_string(std::get<int>(row[index]));
+                        } else if (std::holds_alternative<double>(row[index])) {
+                            str_value = std::to_string(std::get<double>(row[index]));
+                        } else if (std::holds_alternative<bool>(row[index])) {
+                            str_value = std::to_string(std::get<bool>(row[index]));
+                        } else if (std::holds_alternative<std::string>(row[index])) {
+                            str_value = std::get<std::string>(row[index]);
+                        }
+                        row_values[name] = str_value;
+                    }
+                    return calculator::safeGet<bool>(calc.evaluate(insertStmt->predicate, row_values));
+                };
+
+                std::vector<ResultRowType> result_rows;
+
+                for (const auto& column : insertStmt->predicate.empty() ? table.filter(filter_predicate) : table.get_rows()) {
+                    std::unordered_map<std::string, DBType> row = {};
+                    if (insertStmt->column_names[0] == "*") {
+                        for (const auto& [name, index] : table.get_column_to_row_offset()) {
+                            row[name] = column[index];
+                        }
+                    } else {
+                        for (const auto &column_name: insertStmt->column_names) {
+                            row[column_name] = column[table.get_column_to_row_offset()[column_name]];
+                        }
+                    }
+                    result_rows.emplace_back(row);
+                }
+
+                result = Result(std::move(result_rows));
             } else {
                 throw std::runtime_error("Unsupported SQL statement.");
             }
