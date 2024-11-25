@@ -38,3 +38,6 @@ build
 
 # idea
 .idea
+
+# vscode
+.vscode

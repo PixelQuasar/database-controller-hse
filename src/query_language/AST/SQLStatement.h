@@ -76,24 +76,9 @@ namespace database {
     class UpdateStatement : public SQLStatement {
     public:
         std::string tableName;
-        std::vector<std::string, > newValues;
+        std::unordered_map<std::string, std::string> newValues;
         std::string predicate;
 
-        std::string toString() const override {
-            std::string result = "UPDATE ";
-            for (size_t i = 0; i < column_names.size(); ++i) {
-                result += column_names[i];
-                if (i != column_names.size() - 1) {
-                    result += ", ";
-                }
-            }
-            result += " FROM " + tableName;
-            if (!predicate.empty()) {
-                result += " WHERE " + predicate;
-            }
-            result += ";";
-            return result;
-        }
     };
 
 } // namespace database
