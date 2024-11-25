@@ -179,7 +179,7 @@ std::shared_ptr<CreateTableStatement> Parser::parseCreateTable() {
     return createStmt;
 }
 
-std::unique_ptr<InsertStatement> Parser::parseInsert() {
+std::shared_ptr<InsertStatement> Parser::parseInsert() {
     skipWhitespace();
 
     std::string tableName = parseIdentifier();
@@ -287,7 +287,7 @@ std::shared_ptr<SelectStatement> Parser::parseSelect() {
     return selectStmt;
 }
 
-std::unique_ptr<UpdateStatement> Parser::parseUpdate() {
+std::shared_ptr<UpdateStatement> Parser::parseUpdate() {
     auto selectStmt = std::make_unique<UpdateStatement>();
     skipWhitespace();
 

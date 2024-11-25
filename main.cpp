@@ -67,7 +67,7 @@ int main() {
     std::string update_str =
         "UPDATE Employees SET (Salary = 0.0) WHERE Salary > 60000.00;";
 
-    auto update_result = executor.execute(*database::Parser::parse(update_str));
+    auto update_result = executor.execute(database::Parser::parse(update_str));
 
     if (!update_result.is_ok()) {
         throw std::runtime_error("update error: " +

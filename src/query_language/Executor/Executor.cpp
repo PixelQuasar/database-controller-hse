@@ -29,24 +29,13 @@ Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
     Result result = {};
     try {
         calculator::Calculator calc;
-        if (const auto *createStmt =
-                dynamic_cast<const CreateTableStatement *>(&stmt)) {
+        if (const auto *createStmt = dynamic_cast<const CreateTableStatement *>(stmt.get())) {
             m_database.createTable(createStmt->tableName, createStmt->columns);
         } else if (const auto *insertStmt =
-                       dynamic_cast<const InsertStatement *>(&stmt)) {
+                       dynamic_cast<const InsertStatement *>(stmt.get())) {
             std::vector<DBType> row;
             const auto &table = m_database.getTable(insertStmt->tableName);
             const auto &columns = table.get_scheme();
-    Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
-        Result result = {};
-        try {
-            calculator::Calculator calc;
-            if (const auto *createStmt = dynamic_cast<const CreateTableStatement *>(stmt.get())) {
-                m_database.createTable(createStmt->tableName, createStmt->columns);
-            } else if (const auto *insertStmt = dynamic_cast<const InsertStatement *>(stmt.get())) {
-                std::vector<DBType> row;
-                const auto &table = m_database.getTable(insertStmt->tableName);
-                const auto &columns = table.get_scheme();
 
             if (insertStmt->values.size() > columns.size()) {
                 throw std::runtime_error("Too many values provided.");
@@ -136,7 +125,7 @@ Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
 
             result = Result(std::move(result_rows));
         } else if (const auto *insertStmt =
-                       dynamic_cast<const UpdateStatement *>(&stmt)) {
+                       dynamic_cast<const UpdateStatement *>(stmt.get())) {
             Table &table = m_database.getTable(insertStmt->tableName);
 
             // check if columns are valid
