@@ -42,7 +42,6 @@ std::unordered_map<std::string, std::string> Parser::parseAssignValues() {
         skipWhitespace();
         std::cout << "Before parsing value at pos: " << pos_ << ", char: '" << sql_[pos_] << "'\n";
 
-        // Убираем проверку на кавычки и всегда используем parseExpression
         std::string value = parseExpression();
         std::cout << "Parsed value: " << value << "\n";
 
