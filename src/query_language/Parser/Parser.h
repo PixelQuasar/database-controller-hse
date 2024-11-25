@@ -12,6 +12,7 @@ namespace database {
     class Parser {
     public:
         static std::unique_ptr<SQLStatement> parse(const std::string& sql);
+        static std::unordered_map<std::string, std::string> parseAssign(const std::string& sql);
 
     private:
         Parser(const std::string& sql);
@@ -19,6 +20,7 @@ namespace database {
         std::unique_ptr<CreateTableStatement> parseCreateTable();
         std::unique_ptr<InsertStatement> parseInsert();
         std::unique_ptr<SelectStatement> parseSelect();
+        std::unordered_map<std::string, std::string> parseAssignValues();
 
         void skipWhitespace();
         bool matchCharacter(char expected);

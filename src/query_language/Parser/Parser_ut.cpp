@@ -137,7 +137,7 @@ TEST_F(ParserTest, InvalidSyntax) {
 }
 
 TEST_F(ParserTest, ParseInsertWithColumnAssignments) {
-    auto stmt = Parser::parse("INSERT INTO Employees (ID = 1, FirstName = \"John\", LastName = \"Doe\", Age = 30, Salary = 50000.50, IsManager = true, IsFullTime = true, YearsOfService = 5.5, PerformanceScore = 95);");
+    auto stmt = Parser::parse("INSERT INTO Employees (ID = 1, FirstName = \"John\", LastName = \"Doe\", Age = 30, Salary = 50000.50, IsManager = true && false, IsFullTime = true, YearsOfService = 5.5, PerformanceScore = 95);");
     auto insertStmt = dynamic_cast<InsertStatement*>(stmt.get());
     ASSERT_NE(insertStmt, nullptr);
     EXPECT_EQ(insertStmt->tableName, "Employees");
