@@ -46,7 +46,7 @@ namespace calculator {
         std::vector<std::string> tokenize(
             const std::string& expression,
             const std::unordered_map<std::string, std::string>& external_values = {}
-        );
+        ) const;
         static int getPrecedence(const std::string& operator_);
         static bool isOperator(const std::string& token);
         static Value applyOperator(const std::string& op, const Value& a, const Value& b);

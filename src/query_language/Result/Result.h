@@ -27,15 +27,17 @@ namespace database {
             , m_error_msg({})
             , m_is_error(false) {}
 
-        static Result errorResult (std::string&& msg) {
-            return { {}, msg, true };
-        }
+        static Result errorResult (std::string&& msg) { return { {}, msg, true }; }
 
         bool is_ok() const { return !m_is_error; }
+
+        std::string get_error_message() { return m_error_msg; }
+
+        std::vector<ResultRowType> get_payload() { return m_payload; }
     private:
         bool m_is_error = false;
         std::string m_error_msg;
-        std::vector<database::ResultRowType> m_payload;
+        std::vector<ResultRowType> m_payload;
     };
 } // database
 

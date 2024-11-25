@@ -52,11 +52,34 @@ namespace database {
     class SelectStatement : public SQLStatement {
     public:
         std::string tableName;
-        std::vector<std::string> column_names;
+        std::vector<std::string> columnNames;
         std::string predicate;
 
         std::string toString() const override {
             std::string result = "SELECT ";
+            for (size_t i = 0; i < columnNames.size(); ++i) {
+                result += columnNames[i];
+                if (i != columnNames.size() - 1) {
+                    result += ", ";
+                }
+            }
+            result += " FROM " + tableName;
+            if (!predicate.empty()) {
+                result += " WHERE " + predicate;
+            }
+            result += ";";
+            return result;
+        }
+    };
+
+    class UpdateStatement : public SQLStatement {
+    public:
+        std::string tableName;
+        std::vector<std::string, > newValues;
+        std::string predicate;
+
+        std::string toString() const override {
+            std::string result = "UPDATE ";
             for (size_t i = 0; i < column_names.size(); ++i) {
                 result += column_names[i];
                 if (i != column_names.size() - 1) {

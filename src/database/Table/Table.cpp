@@ -7,6 +7,7 @@
 #include <map>
 #include <functional>
 #include "Table.h"
+#include <iostream>
 
 namespace database {
     std::string Table::convert_to_byte_buffer() {

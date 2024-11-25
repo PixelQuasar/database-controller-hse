@@ -367,7 +367,7 @@ namespace database {
             columns.push_back(parseIdentifier());
         } while (sql_[pos_++] == ',');
 
-        selectStmt->column_names = columns;
+        selectStmt->columnNames = columns;
 
         skipWhitespace();
 

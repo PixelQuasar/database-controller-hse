@@ -13,13 +13,17 @@
 #include "../../query_language/AST/SQLStatement.h"
 
 namespace database {
-
     class Table {
     public:
         Table() {}
 
         Table(const std::string& name, const SchemeType& columns)
             : name_(name), scheme_(columns) {
+            for (int i = 0; i < columns.size(); i++) {
+                column_to_row_offset_[columns[i].name] = i;
+            }
+            row_sizes_.resize(columns.size());
+            // TODO Initialize row_sizes_
         }
 
         size_t size() const {

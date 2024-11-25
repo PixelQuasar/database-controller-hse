@@ -36,6 +36,8 @@ namespace database {
     using RowType = std::vector<DBType>;
 
     using SchemeType = std::vector<ColumnDefinition>;
+
+    std::string dBTypeToString(DBType value);
 } //database
 
 #endif //DATABASE_CONTROLLER_HSE_TYPES_H

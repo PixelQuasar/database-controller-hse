@@ -123,7 +123,7 @@ namespace calculator {
 
     std::vector<std::string> Calculator::tokenize(
         const std::string& expression, const std::unordered_map<std::string, std::string>& external_values
-    ) {
+    ) const {
         std::vector<std::string> tokens;
         std::string token;
         bool inString = false;

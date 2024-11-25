@@ -6,10 +6,24 @@
 #include "../AST/SQLStatement.h"
 #include "../../database/Database/Database.h"
 #include "../../Calculator/Calculator.h"
+#include "../Result/Result.h"
 #include <iostream>
 #include <regex>
 
 namespace database {
+    std::string dBTypeToString(DBType value) {
+        std::string str_value;
+        if (std::holds_alternative<int>(value)) {
+            str_value = std::to_string(std::get<int>(value));
+         } else if (std::holds_alternative<double>(value)) {
+            str_value = std::to_string(std::get<double>(value));
+        } else if (std::holds_alternative<bool>(value)) {
+            str_value = std::to_string(std::get<bool>(value));
+        } else if (std::holds_alternative<std::string>(value)) {
+            str_value = std::get<std::string>(value);
+        }
+        return str_value;
+    }
 
     Result Executor::execute(const SQLStatement& stmt) {
         Result result = {};
@@ -50,37 +64,32 @@ namespace database {
             } else if (const auto *insertStmt = dynamic_cast<const SelectStatement *>(&stmt)) {
                 auto table = m_database.getTable(insertStmt->tableName);
 
-                if (insertStmt->column_names[0] != "*") {
+                // check if columns are valid
+                 for (const auto &column_name: insertStmt->columnNames) {
+                    if (!table.get_column_to_row_offset().count(column_name)) {
+                        throw std::invalid_argument("Invalid selector: " + column_name + ".");
+                    }
+                 }
 
-                }
+                // build the predicate
                 auto filter_predicate = [table, insertStmt, calc](const std::vector<DBType>& row) {
                     std::unordered_map<std::string, std::string> row_values = {};
                     for (const auto& [name, index] : table.get_column_to_row_offset()) {
-                        std::string str_value;
-                        if (std::holds_alternative<int>(row[index])) {
-                            str_value = std::to_string(std::get<int>(row[index]));
-                        } else if (std::holds_alternative<double>(row[index])) {
-                            str_value = std::to_string(std::get<double>(row[index]));
-                        } else if (std::holds_alternative<bool>(row[index])) {
-                            str_value = std::to_string(std::get<bool>(row[index]));
-                        } else if (std::holds_alternative<std::string>(row[index])) {
-                            str_value = std::get<std::string>(row[index]);
-                        }
-                        row_values[name] = str_value;
+                        row_values[name] = dBTypeToString(row[index]);
                     }
                     return calculator::safeGet<bool>(calc.evaluate(insertStmt->predicate, row_values));
                 };
 
                 std::vector<ResultRowType> result_rows;
 
-                for (const auto& column : insertStmt->predicate.empty() ? table.filter(filter_predicate) : table.get_rows()) {
+                for (const auto& column : !insertStmt->predicate.empty() ? table.filter(filter_predicate) : table.get_rows()) {
                     std::unordered_map<std::string, DBType> row = {};
-                    if (insertStmt->column_names[0] == "*") {
+                    if (insertStmt->columnNames[0] == "*") {
                         for (const auto& [name, index] : table.get_column_to_row_offset()) {
                             row[name] = column[index];
                         }
                     } else {
-                        for (const auto &column_name: insertStmt->column_names) {
+                        for (const auto &column_name: insertStmt->columnNames) {
                             row[column_name] = column[table.get_column_to_row_offset()[column_name]];
                         }
                     }
