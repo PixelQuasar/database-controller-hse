@@ -6,6 +6,7 @@
 
 #include "../../database/Database/Database.h"
 #include "../AST/SQLStatement.h"
+#include "Parser.h"
 #include <memory>
 #include <iostream>
 #include "../../Calculator/Calculator.h"
@@ -17,7 +18,7 @@ namespace database {
         Executor(Database& database) : m_database(database) {}
 
         Result execute(std::shared_ptr<SQLStatement> stmt);
-
+        Result execute(const std::string &sql);
     private:
         Database& m_database;
     };
