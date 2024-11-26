@@ -13,6 +13,19 @@ using namespace database;
 int main() {
     auto db = database::Database();
     auto executor = database::Executor(db);
+    auto calc = calculator::Calculator();
+
+    try {
+        auto res = std::get<database::bytebuffer>(calc.evaluate("0x1234 + 0x1010"));
+        for (auto ch : res) {
+            std::cout << +ch << std::endl;
+        }
+    } catch (std::invalid_argument& e) {
+        std::cout << "\n\n\n";
+        std::cout << e.what() << std::endl;
+    }
+
+    return 0;
 
     auto createStmt =
         Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR, Age INT);");
@@ -26,8 +39,6 @@ int main() {
         Parser::parse("UPDATE Test SET (Age = Age + 1) WHERE ID == 1;");
     auto result = executor.execute(updateStmt);
     std::cout << result.get_error_message();
-
-    return 0;
 
     std::string create_str =
         "CREATE TABLE Employees ("

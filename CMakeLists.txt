@@ -21,6 +21,7 @@ set(SOURCE_FILES
     src/query_language/Executor/Executor.cpp
     src/query_language/Query/Query.cpp
         src/query_language/Result/Result.cpp
+        src/types.cpp
 )
 
 add_executable(database ${SOURCE_FILES})

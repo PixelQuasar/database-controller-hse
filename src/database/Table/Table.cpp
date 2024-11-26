@@ -204,7 +204,7 @@ void Table::addAutoIncrement(const std::string& columnName) {
     if (it == scheme_.end()) {
         throw std::runtime_error("Column not found: " + columnName);
     }
-    if (it->type != "INT") {
+    if (it->type != DataTypeName::INT) {
         throw std::runtime_error(
             "AutoIncrement is only applicable to integer columns.");
     }
