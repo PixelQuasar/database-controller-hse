@@ -4,6 +4,12 @@
 
 #include "Executor.h"
 
+#include "../AST/SQLStatement.h"
+#include "../../database/Database/Database.h"
+#include "../../Calculator/Calculator.h"
+#include "../Result/Result.h"
+#include "../Parser/Parser.h"
+
 #include <iostream>
 #include <regex>
 
@@ -355,7 +361,12 @@ Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
     } catch (const std::exception &e) {
         result = Result::errorResult(std::string(e.what()));
     }
-    return result;
+ return result;
+}
+  
+Result Executor::execute(const std::string &sql) {
+    std::shared_ptr<SQLStatement> stmt = Parser::parse(sql);
+    return Executor::execute(stmt);
 }
 
 }  // namespace database

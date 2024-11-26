@@ -4,6 +4,7 @@
 #ifndef DATABASE_CONTROLLER_HSE_EXECUTOR_H
 #define DATABASE_CONTROLLER_HSE_EXECUTOR_H
 
+
 #include <iostream>
 #include <memory>
 #include <unordered_set>
@@ -12,15 +13,16 @@
 #include "../../database/Database/Database.h"
 #include "../AST/SQLStatement.h"
 #include "../Result/Result.h"
+#include "../Parser/Parser.h"
 
 namespace database {
 class Executor {
-   public:
+public:
     Executor(Database& database) : m_database(database) {}
 
     Result execute(std::shared_ptr<SQLStatement> stmt);
-
-   private:
+    Result execute(const std::string &sql);
+private:
     Database& m_database;
 };
 
