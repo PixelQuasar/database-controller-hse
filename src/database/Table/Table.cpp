@@ -116,7 +116,7 @@ std::vector<RowType> Table::filter(
 void Table::update_many(
     const std::function<void(std::vector<DBType>&)>& updater,
     const std::function<bool(const std::vector<DBType>&)>& predicate) {
-    for (auto row : rows_) {
+    for (auto& row : rows_) {
         if (predicate(row)) {
             updater(row);
         }
