@@ -5,6 +5,7 @@
 #include <iostream>
 #include <locale>
 #include <stdexcept>
+#include <sstream>
 
 namespace database {
 
@@ -18,76 +19,59 @@ Parser::Parser(const std::string& sql) : sql_(sql), pos_(0) {}
 std::unordered_map<std::string, std::string> Parser::parseAssignValues() {
     std::unordered_map<std::string, std::string> columnValuePairs;
     bool firstColumn = true;
+    std::cout << "Starting parseAssignValues at pos: " << pos_ << ", char: '" << sql_[pos_] << "'\n";
+    
     while (pos_ < sql_.size()) {
         skipWhitespace();
+        std::cout << "After skipWhitespace, pos: " << pos_ << ", char: '" << sql_[pos_] << "'\n";
 
         if (sql_[pos_] == ')') {
+            std::cout << "Found closing parenthesis, breaking\n";
             pos_++;
             break;
         }
 
-        if (!firstColumn) {
-            size_t lastNonSpace = pos_ - 1;
-            while (lastNonSpace > 0 && std::isspace(sql_[lastNonSpace])) {
-                lastNonSpace--;
-            }
-
-            if (sql_[lastNonSpace] != ',') {
-                throw std::runtime_error(
-                    "Expected ',' between column assignments");
-            }
-        }
-
         std::string columnName = parseIdentifier();
+        std::cout << "Parsed column name: " << columnName << "\n";
         skipWhitespace();
 
         if (pos_ >= sql_.size() || sql_[pos_] != '=') {
-            throw std::runtime_error("Expected '=' after column name: " +
-                                     columnName);
+            throw std::runtime_error("Expected '=' after column name: " + columnName);
         }
         pos_++;
         skipWhitespace();
+        std::cout << "Before parsing value at pos: " << pos_ << ", char: '" << sql_[pos_] << "'\n";
 
-        std::string value;
-        if (sql_[pos_] == '"') {
-            value = parseStringLiteral();
-        } else {
-            value = parseExpression();
-            if (!value.empty() && value != "true" && value != "false" &&
-                !std::all_of(value.begin(), value.end(), [](char c) {
-                    return std::isdigit(c) || c == '.' || c == '+' ||
-                           c == '-' || c == '*' || c == '/' || c == '(' ||
-                           c == ')' || std::isspace(c);
-                })) {
-                throw std::runtime_error(
-                    "String value must be enclosed in quotes: " + value);
-            }
-        }
+        std::string value = parseExpression();
+        std::cout << "Parsed value: " << value << "\n";
 
         columnValuePairs[columnName] = value;
         firstColumn = false;
 
         skipWhitespace();
+        std::cout << "After value, at pos: " << pos_ << ", char: '" << sql_[pos_] << "'\n";
+        
+        if (pos_ >= sql_.size()) {
+            throw std::runtime_error("Unexpected end of input after value");
+        }
         if (sql_[pos_] == ',') {
+            std::cout << "Found comma, continuing\n";
             pos_++;
             skipWhitespace();
-            if (!std::isalpha(sql_[pos_]) && sql_[pos_] != '_') {
+            if (pos_ >= sql_.size() ||
+                (!std::isalpha(sql_[pos_]) && sql_[pos_] != '_')) {
                 throw std::runtime_error("Expected column name after comma");
             }
             continue;
         }
         if (sql_[pos_] == ')') {
+            std::cout << "Found closing parenthesis, breaking\n";
             pos_++;
             break;
         }
         throw std::runtime_error("Expected ',' or ')' after value");
     }
     return columnValuePairs;
-}
-
-std::unordered_map<std::string, std::string> Parser::parseAssign(const std::string& sql) {
-    Parser parser(sql);
-    return parser.parseAssignValues();
 }
 
 std::shared_ptr<SQLStatement> Parser::parseStatement() {
@@ -104,6 +88,13 @@ std::shared_ptr<SQLStatement> Parser::parseStatement() {
         return parseInsert();
     } else if (matchKeyword("SELECT")) {
         return parseSelect();
+    } else if (matchKeyword("UPDATE")) {
+        return parseUpdate();
+    } else if (matchKeyword("DELETE")) {
+        if (!matchKeyword("FROM")) {
+            throw std::runtime_error("Expected FROM after DELETE");
+        }
+        return parseDelete();
     } else {
         throw std::runtime_error("Unsupported SQL statement.");
     }
@@ -156,6 +147,14 @@ std::shared_ptr<CreateTableStatement> Parser::parseCreateTable() {
             } else if (matchKeyword("KEY")) {
                 column.isUnique = true;
                 column.isKey = true;
+            } else if (matchKeyword("DEFAULT")) {
+                column.hasDefault = true;
+                skipWhitespace();
+                if (sql_[pos_] == '"') {
+                    column.defaultValue = parseStringLiteral();
+                } else {
+                    column.defaultValue = parseExpression();
+                }
             } else {
                 std::string unknownAttr = parseIdentifier();
                 throw std::runtime_error("Unknown column attribute: " +
@@ -188,7 +187,7 @@ std::shared_ptr<InsertStatement> Parser::parseInsert() {
     std::string tableName = parseIdentifier();
     skipWhitespace();
 
-    auto insertStmt = std::make_shared<InsertStatement>();
+    auto insertStmt = std::make_unique<InsertStatement>();
     insertStmt->tableName = tableName;
     bool flagValues = matchKeyword("VALUES");
     if (flagValues) {
@@ -202,12 +201,31 @@ std::shared_ptr<InsertStatement> Parser::parseInsert() {
 
     if (flagValues) {
         std::vector<std::string> values;
+        bool expectValue = true;
+
         while (pos_ < sql_.size()) {
             skipWhitespace();
 
             if (sql_[pos_] == ')') {
+                if (expectValue) {
+                    values.push_back("");
+                }
                 pos_++;
                 break;
+            }
+
+            if (sql_[pos_] == ',') {
+                if (expectValue) {
+                    values.push_back("");
+                }
+                pos_++;
+                expectValue = true;
+                continue;
+            }
+
+            if (!expectValue) {
+                throw std::runtime_error(
+                    "Expected ',' or ')' after value in VALUES clause");
             }
 
             std::string value;
@@ -217,28 +235,19 @@ std::shared_ptr<InsertStatement> Parser::parseInsert() {
                 value = parseExpression();
             }
 
-            values.push_back(value);
+            if (!value.empty()) {
+                values.push_back(value);
+            } else {
+                values.push_back("");
+            }
+            expectValue = false;
 
             skipWhitespace();
-            if (sql_[pos_] == ',') {
-                pos_++;
-                skipWhitespace();
-                if (sql_[pos_] == ')') {
-                    throw std::runtime_error(
-                        "Expected value after comma in VALUES clause");
-                }
-                continue;
-            }
-            if (sql_[pos_] == ')') {
-                pos_++;
-                break;
-            }
-            throw std::runtime_error(
-                "Expected ',' or ')' after value in VALUES clause");
         }
 
         insertStmt->values = values;
     } else {
+        insertStmt->isMapFormat = true;
         insertStmt->columnValuePairs = parseAssignValues();
     }
 
@@ -277,17 +286,114 @@ std::shared_ptr<SelectStatement> Parser::parseSelect() {
 
     if (matchKeyword("WHERE")) {
         std::string predicate;
-        std::string current_token = parseToken();
-
         while (pos_ < sql_.size() && sql_[pos_] != ';') {
-            predicate += current_token + " ";
-            current_token = parseToken();
+            predicate += sql_[pos_++];
         }
-        predicate += current_token;
+        predicate = trim(predicate);
         selectStmt->predicate = predicate;
     }
 
     return selectStmt;
+}
+
+std::shared_ptr<UpdateStatement> Parser::parseUpdate() {
+    auto updateStmt = std::make_unique<UpdateStatement>();
+    std::cout << "Starting parseUpdate\n";
+    skipWhitespace();
+
+    std::string tableName = parseIdentifier();
+    std::cout << "Parsed table name: " << tableName << "\n";
+    updateStmt->tableName = tableName;
+
+    if (!matchKeyword("SET")) {
+        throw std::runtime_error("Expected SET after table name in UPDATE statement.");
+    }
+    std::cout << "Found SET keyword\n";
+
+    pos_++;
+    std::cout << "Parsing assign values...\n";
+    updateStmt->newValues = parseAssignValues();
+    skipWhitespace();
+
+    std::cout << "After parsing values, checking for WHERE\n";
+    if (matchKeyword("WHERE")) {
+        std::cout << "Found WHERE keyword\n";
+        std::string predicate;
+        skipWhitespace();
+        
+        std::cout << "Starting to parse predicate\n";
+        while (pos_ < sql_.size() && sql_[pos_] != ';') {
+            predicate += sql_[pos_];
+            std::cout << "Current predicate: '" << predicate << "', next char: '" << sql_[pos_] << "'\n";
+            pos_++;
+        }
+        
+        std::cout << "Raw predicate: '" << predicate << "'\n";
+        std::string cleanPredicate;
+        bool lastWasSpace = true;
+        
+        for (char c : predicate) {
+            if (std::isspace(c)) {
+                if (!lastWasSpace) {
+                    cleanPredicate += ' ';
+                    lastWasSpace = true;
+                }
+            } else {
+                cleanPredicate += c;
+                lastWasSpace = false;
+            }
+        }
+        
+        if (!cleanPredicate.empty() && cleanPredicate.back() == ' ') {
+            cleanPredicate.pop_back();
+        }
+        
+        std::cout << "Clean predicate: '" << cleanPredicate << "'\n";
+        updateStmt->predicate = cleanPredicate;
+    }
+
+    std::cout << "Finished parsing UPDATE statement\n";
+    return updateStmt;
+}
+
+std::shared_ptr<DeleteStatement> Parser::parseDelete() {
+    auto deleteStmt = std::make_unique<DeleteStatement>();
+    skipWhitespace();
+    deleteStmt->tableName = parseIdentifier();
+
+    skipWhitespace();
+
+    if (matchKeyword("WHERE")) {
+        std::string predicate;
+        skipWhitespace();
+        
+        while (pos_ < sql_.size() && sql_[pos_] != ';') {
+            predicate += sql_[pos_++];
+        }
+        
+        std::string cleanPredicate;
+        bool lastWasSpace = true;
+        
+        for (char c : predicate) {
+            if (std::isspace(c)) {
+                if (!lastWasSpace) {
+                    cleanPredicate += ' ';
+                    lastWasSpace = true;
+                }
+            } else {
+                cleanPredicate += c;
+                lastWasSpace = false;
+            }
+        }
+        
+        if (!cleanPredicate.empty() && cleanPredicate.back() == ' ') {
+            cleanPredicate.pop_back();
+        }
+        
+        deleteStmt->predicate = cleanPredicate;
+    }
+
+    return deleteStmt;
 }
 
 void Parser::skipWhitespace() {
@@ -414,23 +520,53 @@ std::string Parser::parseStringLiteral() {
 std::string Parser::parseExpression() {
     std::string value;
     int brackets = 0;
+    std::cout << "Starting parseExpression at pos: " << pos_ << ", char: '" << sql_[pos_] << "'\n";
 
+    skipWhitespace();
+    if (sql_[pos_] == ',' || sql_[pos_] == ')') {
+        std::cout << "Found immediate terminator, returning empty string\n";
+        return "";
+    }
+
+    bool expectingMore = false;
     while (pos_ < sql_.size()) {
         char c = sql_[pos_];
+        std::cout << "Processing char: '" << c << "' at pos: " << pos_ << ", brackets: " << brackets << "\n";
+        
+        if (c == '"') {
+            value += parseStringLiteral();
+            expectingMore = false;
+            continue;
+        }
 
-        if (c == '(')
+        if (c == '(') {
             brackets++;
-        else if (c == ')') {
-            if (brackets == 0) break;
+        } else if (c == ')') {
+            if (brackets == 0) {
+                std::cout << "Found unmatched closing bracket, breaking\n";
+                break;
+            }
             brackets--;
-        } else if (brackets == 0 && c == ',')
+        } else if (brackets == 0 && c == ',' && !expectingMore) {
+            std::cout << "Found comma with no open brackets, breaking\n";
             break;
+        } else if (brackets == 0 && c == ')' && !expectingMore) {
+            std::cout << "Found closing paren with no open brackets, breaking\n";
+            break;
+        }
+
+        if (c == '+' || c == '-' || c == '*' || c == '/' || c == '&' || c == '|') {
+            expectingMore = true;
+        } else if (!std::isspace(c)) {
+            expectingMore = false;
+        }
 
         value += c;
         pos_++;
     }
-
-    return trim(value);
+    value = trim(value);
+    std::cout << "Finished parseExpression, value: '" << value << "', pos: " << pos_ << "\n";
+    return value;
 }
 
 }  // namespace database
