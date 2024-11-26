@@ -116,10 +116,9 @@ std::vector<RowType> Table::filter(
 void Table::update_many(
     const std::function<void(std::vector<DBType>&)>& updater,
     const std::function<bool(const std::vector<DBType>&)>& predicate) {
-    for (int i = 0; i < rows_.size(); i++) {
-        rows_[i][get_column_to_row_offset()["FirstName"]] = "hello";
-        if (predicate(rows_[i])) {
-            updater(rows_[i]);
+    for (auto& row : rows_) {
+        if (predicate(row)) {
+            updater(row);
         }
     }
 }
