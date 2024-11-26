@@ -13,10 +13,6 @@
 #include <iostream>
 #include <regex>
 
-#include "../../Calculator/Calculator.h"
-#include "../../database/Database/Database.h"
-#include "../AST/SQLStatement.h"
-#include "../Result/Result.h"
 
 namespace database {
 
