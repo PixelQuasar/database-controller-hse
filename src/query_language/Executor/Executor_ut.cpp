@@ -21,11 +21,35 @@ TEST_F(ExecutorTest, ExecuteCreateTable) {
     EXPECT_EQ(table.get_scheme()[1].name, "Name");
 }
 
+TEST_F(ExecutorTest, ExecuteCreateTable1) {
+    auto stmt = "CREATE TABLE Test (ID INT, Name VARCHAR);";
+    executor.execute(stmt);
+    const auto& table = db.getTable("Test");
+    EXPECT_EQ(table.get_name(), "Test");
+    ASSERT_EQ(table.get_scheme().size(), 2);
+    EXPECT_EQ(table.get_scheme()[0].name, "ID");
+    EXPECT_EQ(table.get_scheme()[1].name, "Name");
+}
+
 TEST_F(ExecutorTest, ExecuteInsert) {
     auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR);");
     executor.execute(createStmt);
 
     auto insertStmt = Parser::parse("INSERT INTO Test VALUES (1, \"Alice\");");
+    executor.execute(insertStmt);
+
+    const auto& table = db.getTable("Test");
+    const auto& data = table.get_rows();
+    ASSERT_EQ(data.size(), 1);
+    EXPECT_EQ(std::get<int>(data[0][0]), 1);
+    EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
+}
+
+TEST_F(ExecutorTest, ExecuteInsert1) {
+    auto createStmt = "CREATE TABLE Test (ID INT, Name VARCHAR);";
+    executor.execute(createStmt);
+
+    auto insertStmt = "INSERT INTO Test VALUES (1, \"Alice\");";
     executor.execute(insertStmt);
 
     const auto& table = db.getTable("Test");
@@ -43,6 +67,25 @@ TEST_F(ExecutorTest, ExecuteMultipleInserts) {
     executor.execute(insertStmt1);
 
     auto insertStmt2 = Parser::parse("INSERT INTO Test VALUES (2, \"Bob\");");
+    executor.execute(insertStmt2);
+
+    const auto& table = db.getTable("Test");
+    const auto& data = table.get_rows();
+    ASSERT_EQ(data.size(), 2);
+    EXPECT_EQ(std::get<int>(data[0][0]), 1);
+    EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
+    EXPECT_EQ(std::get<int>(data[1][0]), 2);
+    EXPECT_EQ(std::get<std::string>(data[1][1]), "Bob");
+}
+
+TEST_F(ExecutorTest, ExecuteMultipleInserts1) {
+    auto createStmt = "CREATE TABLE Test (ID INT, Name VARCHAR);";
+    executor.execute(createStmt);
+
+    auto insertStmt1 = "INSERT INTO Test VALUES (1, \"Alice\");";
+    executor.execute(insertStmt1);
+
+    auto insertStmt2 = "INSERT INTO Test VALUES (2, \"Bob\");";
     executor.execute(insertStmt2);
 
     const auto& table = db.getTable("Test");
