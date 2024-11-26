@@ -6,7 +6,9 @@
 #define DATABASE_CONTROLLER_HSE_RESULT_H
 
 #include <sstream>
-#include <string>
+#include <iterator>
+#include <cstddef>
+
 #include <unordered_map>
 #include <vector>
 
@@ -34,11 +36,34 @@ class Result {
 
     std::vector<ResultRowType> get_payload() { return m_payload; }
 
-   private:
+    std::vector<ResultRowType> get_payload() { return m_payload; }
+    struct Iterator {
+        using iterator_category = std::forward_iterator_tag;
+        using difference_type = std::ptrdiff_t;
+        using value_type = ResultRowType;
+        using pointer = std::vector<ResultRowType>*;  
+        using reference  = std::vector<ResultRowType>&;
+        Iterator(pointer ptr) : rptr(ptr) {}
+        reference operator*() const { return *rptr; }
+        pointer operator->() { return rptr; }
+
+        Iterator& operator++() { rptr++; return *this; }  
+
+        Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
+
+        friend bool operator== (const Iterator& a, const Iterator& b) { return a.rptr == b.rptr; };
+        friend bool operator!= (const Iterator& a, const Iterator& b) { return a.rptr != b.rptr; }; 
+        Iterator begin() { return Iterator(&rptr[0]); }
+        Iterator end()   { return Iterator(&rptr[sizeof(m_payload)]); } 
+        private:
+            pointer rptr;
+    };
+private:
     bool m_is_error = false;
     std::string m_error_msg;
     std::vector<ResultRowType> m_payload;
 };
-}  // namespace database
+} // database
+
 
 #endif  // DATABASE_CONTROLLER_HSE_RESULT_H
