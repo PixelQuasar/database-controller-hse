@@ -111,9 +111,6 @@ Value Calculator::evaluate(
                 for (size_t i = 2; i < token.length(); i+=2) {
                     newBuffer.push_back(static_cast<char>(std::stoi(token.substr(i, 2), nullptr, 16)));
                 }
-                for (auto ch : newBuffer)  {
-                    std::cout << +ch << " ";
-                }
                 valueStack.emplace(newBuffer);
             }else {
                 valueStack.emplace(std::string(token));
@@ -332,6 +329,21 @@ Value Calculator::applyOperator(const std::string& op, const Value& a,
                 if (op == "<=") return lhs <= rhs;
                 if (op == ">") return lhs > rhs;
                 if (op == ">=") return lhs >= rhs;
+            }
+
+            if constexpr (std::is_same_v<T1, T2> &&
+                          std::is_same_v<T1, database::bytebuffer>) {
+                auto a = static_cast<database::bytebuffer>(lhs);
+                auto b = static_cast<database::bytebuffer>(rhs);
+                std::string str_a(a.begin(), a.end());
+                std::string str_b(b.begin(), b.end());
+
+                if (op == "==") return str_a == str_b;
+                if (op == "!=") return str_a != str_b;
+                if (op == "<") return str_a < str_b;
+                if (op == "<=") return str_a <= str_b;
+                if (op == ">") return str_a > str_b;
+                if (op == ">=") return str_a >= str_b;
             }
 
             throw std::invalid_argument("Incorrect operation: " + op);
