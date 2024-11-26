@@ -177,62 +177,52 @@ Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
             }
         } else if (const auto *selectStmt =
                        dynamic_cast<const SelectStatement *>(stmt.get())) {
-            std::cout << "Executing SELECT statement\n";
             auto table = m_database.getTable(selectStmt->tableName);
-            std::cout << "Got table: " << selectStmt->tableName << "\n";
 
-            // Проверяем колонки
-            std::cout << "Checking columns...\n";
             for (const auto &column_name : selectStmt->columnNames) {
-                std::cout << "Checking column: " << column_name << "\n";
-                if (column_name != "*" && !table.get_column_to_row_offset().count(column_name)) {
-                    std::cout << "Invalid column: " << column_name << "\n";
-                    throw std::invalid_argument("Invalid selector: " + column_name + ".");
+                if (!table.get_column_to_row_offset().count(column_name) &&
+                    column_name != "*") {
+                    throw std::invalid_argument(
+                        "Invalid selector: " + column_name + ".");
                 }
             }
 
-            auto filter_predicate = [table, selectStmt, calc](const std::vector<DBType> &row) {
-                std::cout << "Applying filter predicate\n";
+            auto filter_predicate = [table, selectStmt,
+                                     calc](const std::vector<DBType> &row) {
                 std::unordered_map<std::string, std::string> row_values = {};
-                for (const auto &[name, index] : table.get_column_to_row_offset()) {
+                for (const auto &[name, index] :
+                     table.get_column_to_row_offset()) {
                     row_values[name] = dBTypeToString(row[index]);
-                    std::cout << "Row value " << name << " = " << row_values[name] << "\n";
                 }
-                if (!selectStmt->predicate.empty()) {
-                    std::cout << "Evaluating predicate: " << selectStmt->predicate << "\n";
-                    return calculator::safeGet<bool>(calc.evaluate(selectStmt->predicate, row_values));
-                }
-                return true;
+                return calculator::safeGet<bool>(
+                    calc.evaluate(selectStmt->predicate, row_values));
             };
 
             std::vector<ResultRowType> result_rows;
-            std::cout << "Getting rows...\n";
 
-            auto rows = !selectStmt->predicate.empty() ? table.filter(filter_predicate) : table.get_rows();
-            std::cout << "Got " << rows.size() << " rows\n";
+            auto rows = !selectStmt->predicate.empty()
+                            ? table.filter(filter_predicate)
+                            : table.get_rows();
 
             for (const auto &column : rows) {
                 std::unordered_map<std::string, DBType> row = {};
                 if (selectStmt->columnNames[0] == "*") {
-                    std::cout << "Processing all columns\n";
-                    for (const auto &[name, index] : table.get_column_to_row_offset()) {
+                    for (const auto &[name, index] :
+                         table.get_column_to_row_offset()) {
                         row[name] = column[index];
-                        std::cout << "Added column " << name << " with value " << dBTypeToString(column[index]) << "\n";
                     }
                 } else {
-                    std::cout << "Processing selected columns\n";
                     for (const auto &column_name : selectStmt->columnNames) {
-                        row[column_name] = column[table.get_column_to_row_offset()[column_name]];
-                        std::cout << "Added column " << column_name << " with value " 
-                                 << dBTypeToString(column[table.get_column_to_row_offset()[column_name]]) << "\n";
+                        row[column_name] = column
+                            [table.get_column_to_row_offset()[column_name]];
                     }
                 }
                 result_rows.emplace_back(row);
             }
 
-            std::cout << "Created result with " << result_rows.size() << " rows\n";
             result = Result(std::move(result_rows));
-        } else if (const auto *updateStmt = dynamic_cast<const UpdateStatement *>(stmt.get())) {
+        } else if (const auto *updateStmt =
+                       dynamic_cast<const UpdateStatement *>(stmt.get())) {
             std::cout << "Executing UPDATE statement\n";
             Table &table = m_database.getTable(updateStmt->tableName);
             std::cout << "Got table: " << updateStmt->tableName << "\n";
@@ -240,76 +230,96 @@ Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
             // check if columns are valid
             std::cout << "Checking columns...\n";
             for (const auto &[key, value] : updateStmt->newValues) {
-                std::cout << "Checking column: " << key << " with value: " << value << "\n";
+                std::cout << "Checking column: " << key
+                          << " with value: " << value << "\n";
                 if (!table.get_column_to_row_offset().count(key)) {
                     std::cout << "Invalid column name: " << key << "\n";
-                    throw std::invalid_argument("Invalid value name: " + key + ".");
+                    throw std::invalid_argument("Invalid value name: " + key +
+                                                ".");
                 }
 
-                std::cout << "Evaluating expression: " << value << "\n";
-                auto parsed = calc.evaluate(value);
                 std::cout << "Successfully evaluated expression\n";
 
-                auto column = table.get_scheme()[table.get_column_to_row_offset()[key]];
+                auto column =
+                    table.get_scheme()[table.get_column_to_row_offset()[key]];
                 std::cout << "Got column schema for: " << key << "\n";
 
                 if (column.isAutoIncrement) {
-                    std::cout << "Cannot update autoincrement column: " << key << "\n";
-                    throw std::invalid_argument("Cannot update autoincrement column: " + key + ".");
+                    std::cout << "Cannot update autoincrement column: " << key
+                              << "\n";
+                    throw std::invalid_argument(
+                        "Cannot update autoincrement column: " + key + ".");
                 }
 
                 if (column.isKey) {
                     std::cout << "Cannot update key column: " << key << "\n";
-                    throw std::invalid_argument("Cannot update key column: " + key + ".");
+                    throw std::invalid_argument(
+                        "Cannot update key column: " + key + ".");
                 }
 
                 if (column.isUnique) {
                     std::cout << "Cannot update unique column: " << key << "\n";
-                    throw std::invalid_argument("Cannot update unique column: " + key + ".");
-                }
-
-                std::cout << "Checking type compatibility for column: " << key << "\n";
-                if ((column.type == "INT" && !std::holds_alternative<int>(parsed)) ||
-                    (column.type == "DOUBLE" && !std::holds_alternative<double>(parsed)) ||
-                    (column.type == "BOOL" && !std::holds_alternative<bool>(parsed)) ||
-                    (column.type == "VARCHAR" && !std::holds_alternative<std::string>(parsed))) {
-                    std::cout << "Type mismatch for column: " << key << "\n";
-                    throw std::runtime_error("Type mismatch for column " + key);
+                    throw std::invalid_argument(
+                        "Cannot update unique column: " + key + ".");
                 }
             }
 
+            std::cout << "HELLO" << std::endl;
+
             auto updater = [table, updateStmt, calc](std::vector<DBType> &row) {
                 std::cout << "Applying updates to row\n";
+                std::unordered_map<std::string, std::string> row_values = {};
+                for (const auto &[name, index] :
+                     table.get_column_to_row_offset()) {
+                    row_values[name] = dBTypeToString(row[index]);
+                }
+                std::cout << "ROW: ",
+                    database::dBTypeToString(row_values["Age"]);
+
                 for (const auto &[key, value] : updateStmt->newValues) {
-                    std::cout << "Updating column " << key << " with expression: " << value << "\n";
-                    row[table.get_column_to_row_offset()[key]] = calc.evaluate(value);
+                    row[table.get_column_to_row_offset()[key]] =
+                        calc.evaluate(value, row_values);
                 }
             };
 
             if (updateStmt->predicate.empty()) {
                 std::cout << "No predicate, updating all rows\n";
-                table.update_many(updater, [](const std::vector<DBType> &row) { return true; });
+                table.update_many(updater, [](const std::vector<DBType> &row) {
+                    return true;
+                });
             } else {
-                std::cout << "Applying predicate: " << updateStmt->predicate << "\n";
-                auto filter_predicate = [table, updateStmt, calc](const std::vector<DBType> &row) {
-                    std::unordered_map<std::string, std::string> row_values = {};
-                    for (const auto &[name, index] : table.get_column_to_row_offset()) {
+                std::cout << "Applying predicate: " << updateStmt->predicate
+                          << "\n";
+                auto filter_predicate = [table, updateStmt,
+                                         calc](const std::vector<DBType> &row) {
+                    std::unordered_map<std::string, std::string> row_values =
+                        {};
+                    for (const auto &[name, index] :
+                         table.get_column_to_row_offset()) {
                         auto value = row[index];
-                        std::cout << "Converting value for " << name << ", type index: " << value.index() << "\n";
+                        std::cout << "Converting value for " << name
+                                  << ", type index: " << value.index() << "\n";
                         row_values[name] = dBTypeToString(row[index]);
-                        std::cout << "Row value " << name << " = " << row_values[name] << " (original type index: " << value.index() << ")\n";
+                        std::cout << "Row value " << name << " = "
+                                  << row_values[name]
+                                  << " (original type index: " << value.index()
+                                  << ")\n";
                     }
                     std::cout << "Full predicate context:\n";
-                    for (const auto& [key, value] : row_values) {
+                    for (const auto &[key, value] : row_values) {
                         std::cout << key << ": " << value << "\n";
                     }
-                    std::cout << "Evaluating predicate: '" << updateStmt->predicate << "'\n";
+                    std::cout << "Evaluating predicate: '"
+                              << updateStmt->predicate << "'\n";
                     try {
-                        auto result = calculator::safeGet<bool>(calc.evaluate(updateStmt->predicate, row_values));
-                        std::cout << "Predicate evaluation result: " << result << "\n";
+                        auto result = calculator::safeGet<bool>(
+                            calc.evaluate(updateStmt->predicate, row_values));
+                        std::cout << "Predicate evaluation result: " << result
+                                  << "\n";
                         return result;
-                    } catch (const std::exception& e) {
-                        std::cout << "Error evaluating predicate: " << e.what() << "\n";
+                    } catch (const std::exception &e) {
+                        std::cout << "Error evaluating predicate: " << e.what()
+                                  << "\n";
                         throw;
                     }
                 };
