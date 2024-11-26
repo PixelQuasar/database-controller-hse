@@ -298,27 +298,37 @@ std::shared_ptr<SelectStatement> Parser::parseSelect() {
 
 std::shared_ptr<UpdateStatement> Parser::parseUpdate() {
     auto updateStmt = std::make_unique<UpdateStatement>();
+    std::cout << "Starting parseUpdate\n";
     skipWhitespace();
 
-    updateStmt->tableName = parseIdentifier();
+    std::string tableName = parseIdentifier();
+    std::cout << "Parsed table name: " << tableName << "\n";
+    updateStmt->tableName = tableName;
 
     if (!matchKeyword("SET")) {
-        throw std::runtime_error(
-            "Expected SET after table name in UPDATE statement.");
+        throw std::runtime_error("Expected SET after table name in UPDATE statement.");
     }
+    std::cout << "Found SET keyword\n";
 
     pos_++;
+    std::cout << "Parsing assign values...\n";
     updateStmt->newValues = parseAssignValues();
     skipWhitespace();
 
+    std::cout << "After parsing values, checking for WHERE\n";
     if (matchKeyword("WHERE")) {
+        std::cout << "Found WHERE keyword\n";
         std::string predicate;
         skipWhitespace();
         
+        std::cout << "Starting to parse predicate\n";
         while (pos_ < sql_.size() && sql_[pos_] != ';') {
-            predicate += sql_[pos_++];
+            predicate += sql_[pos_];
+            std::cout << "Current predicate: '" << predicate << "', next char: '" << sql_[pos_] << "'\n";
+            pos_++;
         }
         
+        std::cout << "Raw predicate: '" << predicate << "'\n";
         std::string cleanPredicate;
         bool lastWasSpace = true;
         
@@ -338,9 +348,11 @@ std::shared_ptr<UpdateStatement> Parser::parseUpdate() {
             cleanPredicate.pop_back();
         }
         
+        std::cout << "Clean predicate: '" << cleanPredicate << "'\n";
         updateStmt->predicate = cleanPredicate;
     }
 
+    std::cout << "Finished parsing UPDATE statement\n";
     return updateStmt;
 }
 
