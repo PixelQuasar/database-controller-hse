@@ -36,16 +36,15 @@ class Result {
 
     std::vector<ResultRowType> get_payload() { return m_payload; }
 
-    std::vector<ResultRowType> get_payload() { return m_payload; }
     struct Iterator {
         using iterator_category = std::forward_iterator_tag;
         using difference_type = std::ptrdiff_t;
         using value_type = ResultRowType;
-        using pointer = std::vector<ResultRowType>*;  
-        using reference  = std::vector<ResultRowType>&;
-        Iterator(pointer ptr) : rptr(ptr) {}
+        using pointer = value_type*;  
+        using reference  = value_type&;
+        Iterator(std::vector<ResultRowType>::iterator ptr) : rptr(ptr) {}
         reference operator*() const { return *rptr; }
-        pointer operator->() { return rptr; }
+        pointer operator->() { return &(*rptr); }
 
         Iterator& operator++() { rptr++; return *this; }  
 
@@ -53,11 +52,12 @@ class Result {
 
         friend bool operator== (const Iterator& a, const Iterator& b) { return a.rptr == b.rptr; };
         friend bool operator!= (const Iterator& a, const Iterator& b) { return a.rptr != b.rptr; }; 
-        Iterator begin() { return Iterator(&rptr[0]); }
-        Iterator end()   { return Iterator(&rptr[sizeof(m_payload)]); } 
         private:
-            pointer rptr;
+            std::vector<ResultRowType>::iterator rptr;
     };
+
+    Iterator begin() { return Iterator(m_payload.begin()); }
+    Iterator end()   { return Iterator(m_payload.end()); } 
 private:
     bool m_is_error = false;
     std::string m_error_msg;
