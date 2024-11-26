@@ -164,7 +164,7 @@ std::vector<std::string> Calculator::tokenize(
                            isOperator(std::string(1, expression[i - 1]))))) {
             token += ch;
         } else if (std::isalpha(ch)) {
-            while (i < expression.length() && expression[i] != ' ') {
+            while (i < expression.length() && (std::isdigit(expression[i]) || std::isalpha(expression[i]) ||expression[i] == '_')) {
                 token += expression[i];
                 ++i;
             }

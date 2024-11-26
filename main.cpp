@@ -24,58 +24,23 @@ int main() {
         "    IsManager BOOL,"
         "    IsFullTime BOOL,"
         "    YearsOfService DOUBLE,"
-        "    PerformanceScore BYTEBUFFER"
+        "    PerformanceScore INT"
         ");";
 
     std::vector<std::string> insert_strs = {
-        "INSERT INTO Employees VALUES (1, \"John\", \"Doe\", 30, 50000.50, "
-        "true, true, 5.5, 0x95);",
-        "INSERT INTO Employees VALUES (2, \"Jane\", \"Smith\", 28, 66000.00, "
-        "false, true, 8.0, 0x90);",
-        "INSERT INTO Employees VALUES (3, \"Michael\", \"Johnson\", 45, "
-        "75000.75, true, false, 10.0, 0x85);",
-        "INSERT INTO Employees VALUES (4, \"Emily\", \"Williams\", 22, "
-        "48000.25, false, true, 1.5, 0x88);",
-        "INSERT INTO Employees VALUES (5, \"Chris\", \"Brown\", 39, 54000.00, "
-        "true, true, 12.0, 0x92);",
-        "INSERT INTO Employees VALUES (6, \"Emma\", \"Davis\", 31, 62000.50, "
-        "false, false, 6.3, 0x80);",
-        "INSERT INTO Employees VALUES (7, \"David\", \"Miller\", 36, 58000.00, "
-        "true, true, 7.5, 0x89);",
-        "INSERT INTO Employees VALUES (8, \"Sophia\", \"Taylor\", 27, "
-        "49000.00, false, true, 2.0, 0x93);",
-        "INSERT INTO Employees VALUES (9, \"Alexander\", \"Anderson\", 50, "
-        "80000.00, true, false, 15.0, 0x87);",
-        "INSERT INTO Employees VALUES (10, \"Olivia\", \"Thomas\", 40, "
-        "73000.00, true, true, 9.0, 0x94);",
-        "INSERT INTO Employees VALUES (11, \"Daniel\", \"Jackson\", 29, "
-        "52000.75, false, true, 4.2, 0x86);",
-        "INSERT INTO Employees VALUES (12, \"Sophia\", \"Martinez\", 34, "
-        "61000.50, true, false, 5.0, 0x89);",
-        "INSERT INTO Employees VALUES (13, \"Lucas\", \"Harris\", 43, "
-        "69000.00, true, true, 11.0, 0x83);",
-        "INSERT INTO Employees VALUES (14, \"Ava\", \"Clark\", 26, 53000.00, "
-        "false, false, 3.5, 0x90);",
-        "INSERT INTO Employees VALUES (15, \"Ethan\", \"Lewis\", 32, 56000.00, "
-        "true, true, 8.0, 0x91);"};
+            "INSERT INTO Employees VALUES (4, \"Alice\", \"Williams\", 20 + (2 * "
+            "5), 55000.0, true && (false || true), (true && true) || false, 3.5, "
+            "(90 + 5) - (10 / 2));"
+    };
 
     executor.execute(database::Parser::parse(create_str));
 
     for (auto insert_str : insert_strs) {
-        executor.execute(database::Parser::parse(insert_str));
+        std::cout << executor.execute(database::Parser::parse(insert_str)).get_error_message() << std::endl;
     }
 
-    std::string update_str =
-        "UPDATE Employees SET (Salary = 0.0) WHERE Salary > 60000.00;";
 
-    auto update_result = executor.execute(database::Parser::parse(update_str));
-
-    if (!update_result.is_ok()) {
-        throw std::runtime_error("update error: " +
-                                 update_result.get_error_message());
-    }
-
-    std::string select_str = "SELECT FirstName, Salary, PerformanceScore FROM Employees WHERE PerformanceScore == 0x90";
+    std::string select_str = "SELECT * FROM Employees";
 
      auto result = executor.execute(database::Parser::parse(select_str));
 
@@ -85,7 +50,7 @@ int main() {
 
      for (auto row : result.get_payload()) {
          std::cout << database::dBTypeToString(row["FirstName"]) << " "
-                   << database::dBTypeToString(row["Salary"]) << " " <<database::dBTypeToString(row["PerformanceScore"]) <<  std::endl;
+                   << database::dBTypeToString(row["Salary"]) << std::endl;
      }
 
     return 0;
