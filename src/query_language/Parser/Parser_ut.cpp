@@ -446,6 +446,19 @@ TEST_F(ParserTest, ParseUpdateWithComplexExpressions) {
     EXPECT_EQ(updateStmt->predicate, "ID == 2");
 }
 
+TEST_F(ParserTest, ParseUpdateWithWhitespace) {
+    auto stmt = Parser::parse(
+        "UPDATE   Test   SET   (  ID  =  1  ,  Name  =  \"Alice\"  )   WHERE   "
+        "ID  ==  2  ;");
+    auto updateStmt = dynamic_cast<UpdateStatement*>(stmt.get());
+    ASSERT_NE(updateStmt, nullptr);
+    EXPECT_EQ(updateStmt->tableName, "Test");
+    ASSERT_EQ(updateStmt->newValues.size(), 2);
+    EXPECT_EQ(updateStmt->newValues["ID"], "1");
+    EXPECT_EQ(updateStmt->newValues["Name"], "\"Alice\"");
+    EXPECT_EQ(updateStmt->predicate, "ID == 2");
+}
+
 TEST_F(ParserTest, ParseUpdateWithNewlines) {
     auto stmt = Parser::parse(
         "UPDATE Test SET (\n"
@@ -476,6 +489,14 @@ TEST_F(ParserTest, ParseDeleteWithComplexPredicate) {
     ASSERT_NE(deleteStmt, nullptr);
     EXPECT_EQ(deleteStmt->tableName, "Test");
     EXPECT_EQ(deleteStmt->predicate, "(ID == 1) && (Name == \"Alice\")");
+}
+
+TEST_F(ParserTest, ParseDeleteWithWhitespace) {
+    auto stmt = Parser::parse("DELETE   FROM   Test   WHERE   ID  ==  1  ;");
+    auto deleteStmt = dynamic_cast<DeleteStatement*>(stmt.get());
+    ASSERT_NE(deleteStmt, nullptr);
+    EXPECT_EQ(deleteStmt->tableName, "Test");
+    EXPECT_EQ(deleteStmt->predicate, "ID == 1");
 }
 
 TEST_F(ParserTest, ParseDeleteWithNewlines) {
