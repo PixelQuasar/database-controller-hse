@@ -890,6 +890,131 @@ TEST_F(ExecutorTest, ExecuteUpdateWithInvalidColumn) {
     EXPECT_FALSE(result.is_ok());
 }
 
+TEST_F(ExecutorTest, ExecuteDeleteAllRows) {
+    auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR, Age INT);");
+    executor.execute(createStmt);
+
+    auto insertStmt1 = Parser::parse("INSERT INTO Test VALUES (1, \"Alice\", 25);");
+    auto insertStmt2 = Parser::parse("INSERT INTO Test VALUES (2, \"Bob\", 30);");
+    executor.execute(insertStmt1);
+    executor.execute(insertStmt2);
+
+    auto deleteStmt = Parser::parse("DELETE FROM Test;");
+    auto result = executor.execute(deleteStmt);
+    EXPECT_TRUE(result.is_ok());
+
+    const auto& table = db.getTable("Test");
+    const auto& data = table.get_rows();
+    EXPECT_EQ(data.size(), 0);
+}
+
+TEST_F(ExecutorTest, ExecuteDeleteWithPredicate) {
+    auto createStmt = Parser::parse("CREATE TABLE Test (ID INT, Name VARCHAR, Age INT);");
+    executor.execute(createStmt);
+
+    auto insertStmt1 = Parser::parse("INSERT INTO Test VALUES (1, \"Alice\", 25);");
+    auto insertStmt2 = Parser::parse("INSERT INTO Test VALUES (2, \"Bob\", 30);");
+    auto insertStmt3 = Parser::parse("INSERT INTO Test VALUES (3, \"Charlie\", 25);");
+    executor.execute(insertStmt1);
+    executor.execute(insertStmt2);
+    executor.execute(insertStmt3);
+
+    auto deleteStmt = Parser::parse("DELETE FROM Test WHERE Age == 25;");
+    auto result = executor.execute(deleteStmt);
+    EXPECT_TRUE(result.is_ok());
+
+    const auto& table = db.getTable("Test");
+    const auto& data = table.get_rows();
+    ASSERT_EQ(data.size(), 1);
+    EXPECT_EQ(std::get<std::string>(data[0][1]), "Bob");
+}
+
+TEST_F(ExecutorTest, ExecuteDeleteFromNonExistentTable) {
+    auto deleteStmt = Parser::parse("DELETE FROM NonExistent WHERE ID == 1;");
+    auto result = executor.execute(deleteStmt);
+    EXPECT_FALSE(result.is_ok()); 
+}
+
+TEST_F(ExecutorTest, ComplexDatabaseOperations) {
+    auto createStmt = Parser::parse(
+        "CREATE TABLE Employees ("
+        "    ID INT AUTOINCREMENT KEY,"
+        "    EmpCode INT UNIQUE,"
+        "    FirstName VARCHAR DEFAULT \"New\","
+        "    LastName VARCHAR,"
+        "    Age INT DEFAULT 18,"
+        "    Salary DOUBLE DEFAULT 1000.0,"
+        "    IsActive BOOL DEFAULT true"
+        ");"
+    );
+    auto result = executor.execute(createStmt);
+    EXPECT_TRUE(result.is_ok());
+
+    auto insertStmt1 = Parser::parse("INSERT INTO Employees VALUES (NULL, 101, NULL, \"Doe\", NULL, NULL, NULL);");
+    result = executor.execute(insertStmt1);
+    EXPECT_TRUE(result.is_ok());
+
+    auto insertStmt2 = Parser::parse("INSERT INTO Employees VALUES (NULL, 102, \"John\", \"Smith\", 25, 2000.0, false);");
+    result = executor.execute(insertStmt2);
+    EXPECT_TRUE(result.is_ok());
+
+    auto insertStmt3 = Parser::parse("INSERT INTO Employees VALUES (NULL, 100 + 3, \"Bob\", \"Johnson\", 20 + 5, 1500.0 * 2, true && true);");
+    result = executor.execute(insertStmt3);
+    EXPECT_TRUE(result.is_ok());
+
+    auto insertStmt4 = Parser::parse(
+        "INSERT INTO Employees (EmpCode = 104, FirstName = \"Alice\", LastName = \"Brown\", Age = 30, Salary = 3000.0, IsActive = false);"
+    );
+    result = executor.execute(insertStmt4);
+    EXPECT_TRUE(result.is_ok());
+
+    auto updateStmt = Parser::parse("UPDATE Employees SET (Salary = Salary + 500) WHERE Age > 20;");
+    result = executor.execute(updateStmt);
+    EXPECT_TRUE(result.is_ok());
+
+    auto deleteStmt = Parser::parse("DELETE FROM Employees WHERE Age == 18;");
+    result = executor.execute(deleteStmt);
+    EXPECT_TRUE(result.is_ok());
+
+    const auto& table = db.getTable("Employees");
+    const auto& data = table.get_rows();
+    ASSERT_EQ(data.size(), 3);
+
+    auto selectStmt = Parser::parse("SELECT * FROM Employees;");
+    auto selectResult = executor.execute(selectStmt);
+    auto rows = selectResult.get_payload();
+    std::cout << "SELECTED ROWS:" << std::endl;
+    for (const auto& row : rows) {
+        for (const auto& [key, value] : row) {
+            std::cout << key << ": " << dBTypeToString(value) << std::endl;
+        }
+    }
+    std::cout << std::endl;
+    EXPECT_EQ(std::get<int>(data[0][0]), 1);
+    EXPECT_EQ(std::get<int>(data[0][1]), 102);
+    EXPECT_EQ(std::get<std::string>(data[0][2]), "John");
+    EXPECT_EQ(std::get<std::string>(data[0][3]), "Smith");
+    EXPECT_EQ(std::get<int>(data[0][4]), 25);
+    EXPECT_EQ(std::get<double>(data[0][5]), 2500.0);
+    EXPECT_EQ(std::get<bool>(data[0][6]), false);
+
+    EXPECT_EQ(std::get<int>(data[1][0]), 2);
+    EXPECT_EQ(std::get<int>(data[1][1]), 103);
+    EXPECT_EQ(std::get<std::string>(data[1][2]), "Bob");
+    EXPECT_EQ(std::get<std::string>(data[1][3]), "Johnson");
+    EXPECT_EQ(std::get<int>(data[1][4]), 25);
+    EXPECT_EQ(std::get<double>(data[1][5]), 3500.0);
+    EXPECT_EQ(std::get<bool>(data[1][6]), true);
+
+    EXPECT_EQ(std::get<int>(data[2][0]), 3);
+    EXPECT_EQ(std::get<int>(data[2][1]), 104);
+    EXPECT_EQ(std::get<std::string>(data[2][2]), "Alice");
+    EXPECT_EQ(std::get<std::string>(data[2][3]), "Brown");
+    EXPECT_EQ(std::get<int>(data[2][4]), 30);
+    EXPECT_EQ(std::get<double>(data[2][5]), 3500.0);
+    EXPECT_EQ(std::get<bool>(data[2][6]), false);
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
