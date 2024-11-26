@@ -12,6 +12,7 @@
 #include <string>
 #include <variant>
 #include <vector>
+#include <sstream>
 
 #include "../../Calculator/Calculator.h"
 
@@ -27,6 +28,14 @@ std::string dBTypeToString(DBType value) {
         str_value = std::to_string(std::get<bool>(value));
     } else if (std::holds_alternative<std::string>(value)) {
         str_value = std::get<std::string>(value);
+    } else if (std::holds_alternative<bytebuffer>(value)) {
+        std::stringstream stream;
+        stream << "0x";
+        std::string result( stream.str() );
+        for (const auto& c : std::get<bytebuffer>(value)) {
+            stream << std::hex << +static_cast<uint8_t>(c);
+        }
+        str_value = stream.str();
     }
     return str_value;
 }
@@ -204,7 +213,7 @@ void Table::addAutoIncrement(const std::string& columnName) {
     if (it == scheme_.end()) {
         throw std::runtime_error("Column not found: " + columnName);
     }
-    if (it->type != "INT") {
+    if (it->type != DataTypeName::INT) {
         throw std::runtime_error(
             "AutoIncrement is only applicable to integer columns.");
     }

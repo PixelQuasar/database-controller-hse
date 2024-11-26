@@ -12,9 +12,17 @@
 #include <vector>
 
 namespace database {
+    enum DataTypeName {
+        INT,
+        DOUBLE,
+        BOOL,
+        STRING,
+        BYTEBUFFER
+    };
+
 struct ColumnDefinition {
     std::string name;
-    std::string type;
+    DataTypeName type;
     bool notNull = false;
     bool isUnique = false;
     bool isKey = false;
@@ -22,10 +30,42 @@ struct ColumnDefinition {
     bool isAutoIncrement = false;
     bool hasDefault = false;
 
-    std::string toString() const { return name + " " + type; }
+    std::string toString() const { return name + " " + dataTypeNameToString(type); }
+
+    static std::string dataTypeNameToString(DataTypeName type) {
+        switch (type) {
+            case INT:
+                return "INT";
+            case DOUBLE:
+                return "DOUBLE";
+            case BOOL:
+                return "BOOL";
+            case STRING:
+                return "VARCHAR";
+            case BYTEBUFFER:
+                return "BYTEBUFFER";
+        }
+    }
+
+    static DataTypeName stringToDataTypeName(const std::string& name) {
+        if (name == "INT") {
+            return INT;
+        } else if (name == "DOUBLE") {
+            return DOUBLE;
+        } else if (name == "BOOL") {
+            return BOOL;
+        } else if (name == "VARCHAR") {
+            return STRING;
+        } else if (name == "BYTEBUFFER") {
+            return BYTEBUFFER;
+        }
+        throw std::runtime_error("Unknown type name: " + name);
+    }
 };
 
-using DBType = std::variant<int, double, bool, std::string>;
+using bytebuffer = std::vector<char>;
+
+using DBType = std::variant<int, double, bool, std::string, bytebuffer>;
 
 using ResultRowType = std::unordered_map<std::string, DBType>;
 

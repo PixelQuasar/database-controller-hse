@@ -215,7 +215,8 @@ TEST_F(ExecutorTest, ComplexScenario) {
         "(90 + 5) - (10 / 2));"};
 
     for (const auto& sql : insertStatements) {
-        auto stmt = Parser::parse(sql);
+        auto stmt
+        = Parser::parse(sql);
         executor.execute(stmt);
     }
 
