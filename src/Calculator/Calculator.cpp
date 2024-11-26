@@ -32,11 +32,12 @@ Value Calculator::evaluate(
     const std::string& expression,
     const std::unordered_map<std::string, std::string>& external_values) const {
     std::vector<std::string> tokens = tokenize(expression, external_values);
+
     std::vector<std::string> outputQueue;
     std::stack<std::string> operatorStack;
 
     for (const auto& token : tokens) {
-        if (std::isdigit(token[0]) ||
+        if (std::isdigit(token[0] && !(token.length() > 1 && token[1] == 'x')) ||
             (token[0] == '-' && token.size() > 1 && std::isdigit(token[1])) ||
             (token[0] == '.' && token.size() > 1)) {
             outputQueue.push_back(token);
@@ -94,7 +95,7 @@ Value Calculator::evaluate(
                 valueStack.push(result);
             }
         } else {
-            if (std::isdigit(token[0]) ||
+            if ((std::isdigit(token[0]) && !(token.length() > 1 && token[1] == 'x')) ||
                 (token[0] == '-' && token.size() > 1 &&
                  std::isdigit(token[1])) ||
                 (token[0] == '.' && token.size() > 1)) {
@@ -105,7 +106,13 @@ Value Calculator::evaluate(
                 }
             } else if (token == "true" || token == "false") {
                 valueStack.push(token == "true");
-            } else {
+            }else if (token.length() > 1 && token[1] == 'x') {
+                database::bytebuffer newBuffer = {};
+                for (size_t i = 2; i < token.length(); i+=2) {
+                    newBuffer.push_back(static_cast<char>(std::stoi(token.substr(i, 2), nullptr, 16)));
+                }
+                valueStack.emplace(newBuffer);
+            }else {
                 valueStack.emplace(std::string(token));
             }
         }
@@ -157,19 +164,19 @@ std::vector<std::string> Calculator::tokenize(
                            isOperator(std::string(1, expression[i - 1]))))) {
             token += ch;
         } else if (std::isalpha(ch)) {
-            while (i < expression.length() && std::isalpha(expression[i])) {
+            while (i < expression.length() && (std::isdigit(expression[i]) || std::isalpha(expression[i]) ||expression[i] == '_')) {
                 token += expression[i];
                 ++i;
             }
             --i;
-            if (token != "true" && token != "false") {
+            if (token == "true" || token == "false" || (token.substr(0, 2) == "0x" && token.length() % 2 == 0)) {
+                tokens.push_back(token);
+            } else {
                 if (external_values.find(token) != external_values.end()) {
                     tokens.push_back(external_values.at(token));
                 } else {
                     throw std::invalid_argument("Unknown variable: " + token);
                 }
-            } else {
-                tokens.push_back(token);
             }
             token.clear();
         } else {
@@ -302,6 +309,16 @@ Value Calculator::applyOperator(const std::string& op, const Value& a,
                 if (op == "+") return lhs + rhs;
             }
 
+            if constexpr (std::is_same_v<T1, database::bytebuffer> &&
+                          std::is_same_v<T2, database::bytebuffer>) {
+                if (op == "+")  {
+                    auto a = static_cast<database::bytebuffer>(lhs);
+                    auto b = static_cast<database::bytebuffer>(lhs);
+                    a.insert(a.end(), b.begin(), b.end());
+                    return a;
+                }
+            }
+
             if constexpr (std::is_same_v<T1, T2> &&
                           (std::is_same_v<T1, int> ||
                            std::is_same_v<T1, double> ||
@@ -313,7 +330,21 @@ Value Calculator::applyOperator(const std::string& op, const Value& a,
                 if (op == ">") return lhs > rhs;
                 if (op == ">=") return lhs >= rhs;
             }
-            std::cout << op << std::endl;
+
+            if constexpr (std::is_same_v<T1, T2> &&
+                          std::is_same_v<T1, database::bytebuffer>) {
+                auto a = static_cast<database::bytebuffer>(lhs);
+                auto b = static_cast<database::bytebuffer>(rhs);
+                std::string str_a(a.begin(), a.end());
+                std::string str_b(b.begin(), b.end());
+
+                if (op == "==") return str_a == str_b;
+                if (op == "!=") return str_a != str_b;
+                if (op == "<") return str_a < str_b;
+                if (op == "<=") return str_a <= str_b;
+                if (op == ">") return str_a > str_b;
+                if (op == ">=") return str_a >= str_b;
+            }
 
             throw std::invalid_argument("Incorrect operation: " + op);
         },

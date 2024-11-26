@@ -10,7 +10,7 @@ class DatabaseTest : public ::testing::Test {
 };
 
 TEST_F(DatabaseTest, CreateTable) {
-    db.createTable("Test", {{"ID", "INT"}, {"Name", "VARCHAR"}});
+    db.createTable("Test", {{"ID", DataTypeName::INT}, {"Name", DataTypeName::STRING}});
     const auto& table = db.getTable("Test");
     EXPECT_EQ(table.get_name(), "Test");
     ASSERT_EQ(table.get_scheme().size(), 2);
@@ -19,7 +19,7 @@ TEST_F(DatabaseTest, CreateTable) {
 }
 
 TEST_F(DatabaseTest, InsertIntoTable) {
-    db.createTable("Test", {{"ID", "INT"}, {"Name", "VARCHAR"}});
+    db.createTable("Test", {{"ID", DataTypeName::INT}, {"Name", DataTypeName::STRING}});
     db.insertInto("Test", {1, "Alice"});
     const auto& table = db.getTable("Test");
     const auto& data = table.get_rows();

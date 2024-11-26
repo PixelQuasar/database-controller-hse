@@ -13,11 +13,11 @@ TEST_F(ParserTest, ParseCreateTable) {
     EXPECT_EQ(createStmt->tableName, "Test");
     ASSERT_EQ(createStmt->columns.size(), 2);
     EXPECT_EQ(createStmt->columns[0].name, "ID");
-    EXPECT_EQ(createStmt->columns[0].type, "INT");
+    EXPECT_EQ(createStmt->columns[0].type, DataTypeName::INT);
     EXPECT_FALSE(createStmt->columns[0].isUnique);
 
     EXPECT_EQ(createStmt->columns[1].name, "Name");
-    EXPECT_EQ(createStmt->columns[1].type, "VARCHAR");
+    EXPECT_EQ(createStmt->columns[1].type, DataTypeName::STRING);
     EXPECT_FALSE(createStmt->columns[1].isUnique);
 }
 
@@ -40,12 +40,12 @@ TEST_F(ParserTest, ParseCreateTableWithAttributes) {
     ASSERT_EQ(createStmt->columns.size(), 2);
 
     EXPECT_EQ(createStmt->columns[0].name, "ID");
-    EXPECT_EQ(createStmt->columns[0].type, "INT");
+    EXPECT_EQ(createStmt->columns[0].type, DataTypeName::INT);
     EXPECT_TRUE(createStmt->columns[0].isAutoIncrement);
     EXPECT_FALSE(createStmt->columns[0].isUnique);
 
     EXPECT_EQ(createStmt->columns[1].name, "Name");
-    EXPECT_EQ(createStmt->columns[1].type, "VARCHAR");
+    EXPECT_EQ(createStmt->columns[1].type, DataTypeName::STRING);
     EXPECT_TRUE(createStmt->columns[1].isUnique);
     EXPECT_FALSE(createStmt->columns[1].isAutoIncrement);
 }
@@ -69,16 +69,16 @@ TEST_F(ParserTest, ComplexParsingScenario) {
         EXPECT_EQ(createStmt->tableName, "Employees");
         ASSERT_EQ(createStmt->columns.size(), 9);
 
-        std::vector<std::pair<std::string, std::string>> expectedColumns = {
-            {"ID", "INT"},
-            {"FirstName", "VARCHAR"},
-            {"LastName", "VARCHAR"},
-            {"Age", "INT"},
-            {"Salary", "DOUBLE"},
-            {"IsManager", "BOOL"},
-            {"IsFullTime", "BOOL"},
-            {"YearsOfService", "DOUBLE"},
-            {"PerformanceScore", "INT"}};
+        std::vector<std::pair<std::string, DataTypeName>> expectedColumns = {
+            {"ID", DataTypeName::INT},
+            {"FirstName", DataTypeName::STRING},
+            {"LastName", DataTypeName::STRING},
+            {"Age", DataTypeName::INT},
+            {"Salary", DataTypeName::DOUBLE },
+            {"IsManager", DataTypeName::BOOL},
+            {"IsFullTime", DataTypeName::BOOL},
+            {"YearsOfService", DataTypeName::DOUBLE},
+            {"PerformanceScore", DataTypeName::INT}};
 
         for (size_t i = 0; i < expectedColumns.size(); ++i) {
             EXPECT_EQ(createStmt->columns[i].name, expectedColumns[i].first);
@@ -233,26 +233,26 @@ TEST_F(ParserTest, ParseCreateTableWithDefault) {
     ASSERT_EQ(createStmt->columns.size(), 5);
 
     EXPECT_EQ(createStmt->columns[0].name, "ID");
-    EXPECT_EQ(createStmt->columns[0].type, "INT");
+    EXPECT_EQ(createStmt->columns[0].type, DataTypeName::INT);
     EXPECT_FALSE(createStmt->columns[0].hasDefault);
 
     EXPECT_EQ(createStmt->columns[1].name, "Name");
-    EXPECT_EQ(createStmt->columns[1].type, "VARCHAR");
+    EXPECT_EQ(createStmt->columns[1].type, DataTypeName::STRING);
     EXPECT_TRUE(createStmt->columns[1].hasDefault);
     EXPECT_EQ(createStmt->columns[1].defaultValue, "\"Unknown\"");
 
     EXPECT_EQ(createStmt->columns[2].name, "Age");
-    EXPECT_EQ(createStmt->columns[2].type, "INT");
+    EXPECT_EQ(createStmt->columns[2].type, DataTypeName::INT);
     EXPECT_TRUE(createStmt->columns[2].hasDefault);
     EXPECT_EQ(createStmt->columns[2].defaultValue, "18");
 
     EXPECT_EQ(createStmt->columns[3].name, "Active");
-    EXPECT_EQ(createStmt->columns[3].type, "BOOL");
+    EXPECT_EQ(createStmt->columns[3].type, DataTypeName::BOOL);
     EXPECT_TRUE(createStmt->columns[3].hasDefault);
     EXPECT_EQ(createStmt->columns[3].defaultValue, "true");
 
     EXPECT_EQ(createStmt->columns[4].name, "Salary");
-    EXPECT_EQ(createStmt->columns[4].type, "DOUBLE");
+    EXPECT_EQ(createStmt->columns[4].type, DataTypeName::DOUBLE);
     EXPECT_TRUE(createStmt->columns[4].hasDefault);
     EXPECT_EQ(createStmt->columns[4].defaultValue, "1000.0");
 }

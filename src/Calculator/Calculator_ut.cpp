@@ -127,6 +127,38 @@ TEST_F(CalculatorTest, ExternalValues) {
     EXPECT_EQ(safeGet<int>(calc.evaluate("a / b", values)), 1);
 }
 
+TEST_F(CalculatorTest, ByteBuffer) {
+    bytebuffer buffer = {0x12, 0x34, 0x56, 0x78};
+    Value result = calc.evaluate("0x12345678");
+    EXPECT_EQ(std::get<bytebuffer>(result), buffer);
+}
+
+TEST_F(CalculatorTest, ByteBufferWithArithmetic) {
+    bytebuffer buffer = {0x12, 0x34, 0x56, 0x78, 0x12, 0x34, 0x56, 0x78};
+    Value result = calc.evaluate("0x12345678 + 0x12345678");
+    EXPECT_EQ(std::get<bytebuffer>(result), buffer);
+}
+
+TEST_F(CalculatorTest, ByteBufferCompareOne) {
+    Value result = calc.evaluate("0x12345678 == 0x12345678");
+    EXPECT_TRUE(std::get<bool>(result));
+}
+
+TEST_F(CalculatorTest, ByteBufferCompareTwo) {
+    Value result = calc.evaluate("0x12345678 != 0x12345678");
+    EXPECT_FALSE(std::get<bool>(result));
+}
+
+TEST_F(CalculatorTest, ByteBufferCompareThree) {
+    Value result = calc.evaluate("0x12345678 < 0x12345679");
+    EXPECT_TRUE(std::get<bool>(result));
+}
+
+TEST_F(CalculatorTest, ByteBufferCompareFour) {
+    Value result = calc.evaluate("0x12345678 > 0x12345677");
+    EXPECT_TRUE(std::get<bool>(result));
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
