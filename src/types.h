@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#include <stdexcept>
 
 namespace database {
     enum DataTypeName {
