@@ -313,11 +313,32 @@ std::shared_ptr<UpdateStatement> Parser::parseUpdate() {
 
     if (matchKeyword("WHERE")) {
         std::string predicate;
+        skipWhitespace();
+        
         while (pos_ < sql_.size() && sql_[pos_] != ';') {
             predicate += sql_[pos_++];
         }
-        predicate = trim(predicate);
-        updateStmt->predicate = predicate;
+        
+        std::string cleanPredicate;
+        bool lastWasSpace = true;
+        
+        for (char c : predicate) {
+            if (std::isspace(c)) {
+                if (!lastWasSpace) {
+                    cleanPredicate += ' ';
+                    lastWasSpace = true;
+                }
+            } else {
+                cleanPredicate += c;
+                lastWasSpace = false;
+            }
+        }
+        
+        if (!cleanPredicate.empty() && cleanPredicate.back() == ' ') {
+            cleanPredicate.pop_back();
+        }
+        
+        updateStmt->predicate = cleanPredicate;
     }
 
     return updateStmt;
@@ -332,11 +353,32 @@ std::shared_ptr<DeleteStatement> Parser::parseDelete() {
 
     if (matchKeyword("WHERE")) {
         std::string predicate;
+        skipWhitespace();
+        
         while (pos_ < sql_.size() && sql_[pos_] != ';') {
             predicate += sql_[pos_++];
         }
-        predicate = trim(predicate);
-        deleteStmt->predicate = predicate;
+        
+        std::string cleanPredicate;
+        bool lastWasSpace = true;
+        
+        for (char c : predicate) {
+            if (std::isspace(c)) {
+                if (!lastWasSpace) {
+                    cleanPredicate += ' ';
+                    lastWasSpace = true;
+                }
+            } else {
+                cleanPredicate += c;
+                lastWasSpace = false;
+            }
+        }
+        
+        if (!cleanPredicate.empty() && cleanPredicate.back() == ' ') {
+            cleanPredicate.pop_back();
+        }
+        
+        deleteStmt->predicate = cleanPredicate;
     }
 
     return deleteStmt;

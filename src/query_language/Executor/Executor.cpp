@@ -177,46 +177,60 @@ Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
             }
         } else if (const auto *selectStmt =
                        dynamic_cast<const SelectStatement *>(stmt.get())) {
+            std::cout << "Executing SELECT statement\n";
             auto table = m_database.getTable(selectStmt->tableName);
+            std::cout << "Got table: " << selectStmt->tableName << "\n";
 
+            // Проверяем колонки
+            std::cout << "Checking columns...\n";
             for (const auto &column_name : selectStmt->columnNames) {
-                if (!table.get_column_to_row_offset().count(column_name)) {
-                    throw std::invalid_argument(
-                        "Invalid selector: " + column_name + ".");
+                std::cout << "Checking column: " << column_name << "\n";
+                if (column_name != "*" && !table.get_column_to_row_offset().count(column_name)) {
+                    std::cout << "Invalid column: " << column_name << "\n";
+                    throw std::invalid_argument("Invalid selector: " + column_name + ".");
                 }
             }
 
-            auto filter_predicate = [table, selectStmt,
-                                     calc](const std::vector<DBType> &row) {
+            auto filter_predicate = [table, selectStmt, calc](const std::vector<DBType> &row) {
+                std::cout << "Applying filter predicate\n";
                 std::unordered_map<std::string, std::string> row_values = {};
-                for (const auto &[name, index] :
-                     table.get_column_to_row_offset()) {
+                for (const auto &[name, index] : table.get_column_to_row_offset()) {
                     row_values[name] = dBTypeToString(row[index]);
+                    std::cout << "Row value " << name << " = " << row_values[name] << "\n";
                 }
-                return calculator::safeGet<bool>(
-                    calc.evaluate(selectStmt->predicate, row_values));
+                if (!selectStmt->predicate.empty()) {
+                    std::cout << "Evaluating predicate: " << selectStmt->predicate << "\n";
+                    return calculator::safeGet<bool>(calc.evaluate(selectStmt->predicate, row_values));
+                }
+                return true;
             };
 
             std::vector<ResultRowType> result_rows;
+            std::cout << "Getting rows...\n";
 
-            for (const auto &column : !selectStmt->predicate.empty()
-                                          ? table.filter(filter_predicate)
-                                          : table.get_rows()) {
+            auto rows = !selectStmt->predicate.empty() ? table.filter(filter_predicate) : table.get_rows();
+            std::cout << "Got " << rows.size() << " rows\n";
+
+            for (const auto &column : rows) {
                 std::unordered_map<std::string, DBType> row = {};
                 if (selectStmt->columnNames[0] == "*") {
-                    for (const auto &[name, index] :
-                         table.get_column_to_row_offset()) {
+                    std::cout << "Processing all columns\n";
+                    for (const auto &[name, index] : table.get_column_to_row_offset()) {
                         row[name] = column[index];
+                        std::cout << "Added column " << name << " with value " << dBTypeToString(column[index]) << "\n";
                     }
                 } else {
+                    std::cout << "Processing selected columns\n";
                     for (const auto &column_name : selectStmt->columnNames) {
-                        row[column_name] = column
-                            [table.get_column_to_row_offset()[column_name]];
+                        row[column_name] = column[table.get_column_to_row_offset()[column_name]];
+                        std::cout << "Added column " << column_name << " with value " 
+                                 << dBTypeToString(column[table.get_column_to_row_offset()[column_name]]) << "\n";
                     }
                 }
                 result_rows.emplace_back(row);
             }
 
+            std::cout << "Created result with " << result_rows.size() << " rows\n";
             result = Result(std::move(result_rows));
         } else if (const auto *insertStmt =
                        dynamic_cast<const UpdateStatement *>(stmt.get())) {
