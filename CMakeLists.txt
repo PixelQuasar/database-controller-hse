@@ -27,3 +27,8 @@ set(SOURCE_FILES
 add_executable(database ${SOURCE_FILES})
 
 target_link_libraries(database PRIVATE Calculator Database Table Result Executor Parser Query)
+
+target_compile_options(database PRIVATE
+        $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
+        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
+)

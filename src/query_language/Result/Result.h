@@ -19,14 +19,14 @@ class Result {
    public:
     Result(std::vector<ResultRowType>&& payload, std::string& error_msg,
            bool is_error)
-        : m_payload(std::move(payload)),
+        : m_is_error(is_error),
           m_error_msg(error_msg),
-          m_is_error(is_error) {}
+          m_payload(std::move(payload)) {}
 
     explicit Result(std::vector<ResultRowType>&& payload)
         : m_payload(std::move(payload)) {}
 
-    Result() : m_payload({}), m_error_msg({}), m_is_error(false) {}
+    Result() : m_is_error(false), m_error_msg({}), m_payload({}) {}
 
     static Result errorResult(std::string&& msg) { return {{}, msg, true}; }
 

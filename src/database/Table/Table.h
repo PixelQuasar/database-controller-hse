@@ -23,7 +23,7 @@ class Table {
 
     Table(const std::string& name, const SchemeType& columns)
         : name_(name), scheme_(columns) {
-        for (int i = 0; i < columns.size(); i++) {
+        for (size_t i = 0; i < columns.size(); i++) {
             column_to_row_offset_[columns[i].name] = i;
         }
         row_sizes_.resize(columns.size());
@@ -71,7 +71,6 @@ class Table {
     std::vector<size_t> row_sizes_;
     std::map<std::string, size_t> column_to_row_offset_;
     std::vector<std::string> checkConditions_;
-    bool hasCheckCondition_ = false;
     std::map<std::string, int> autoIncrementValues_;
     std::map<std::string, std::set<DBType>> indexes_;
 };

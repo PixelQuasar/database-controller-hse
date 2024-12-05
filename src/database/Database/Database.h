@@ -4,7 +4,6 @@
 #ifndef DATABASE_CONTROLLER_HSE_DATABASE_H
 #define DATABASE_CONTROLLER_HSE_DATABASE_H
 
-#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>

@@ -10,7 +10,6 @@
 #include "../../Calculator/Calculator.h"
 #include "../Result/Result.h"
 #include "../Parser/Parser.h"
-#include <iostream>
 #include <regex>
 
 namespace database {
@@ -273,7 +272,7 @@ Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
             };
 
             if (updateStmt->predicate.empty()) {
-                table.update_many(updater, [](const std::vector<DBType> &row) {
+                table.update_many(updater, []([[maybe_unused]] const std::vector<DBType> &row) {
                     return true;
                 });
             } else {

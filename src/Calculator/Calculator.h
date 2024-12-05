@@ -1,7 +1,6 @@
 #ifndef DATABASE_CONTROLLER_HSE_CALCULATOR_H
 #define DATABASE_CONTROLLER_HSE_CALCULATOR_H
 
-#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <type_traits>

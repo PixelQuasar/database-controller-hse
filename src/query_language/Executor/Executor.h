@@ -4,8 +4,6 @@
 #ifndef DATABASE_CONTROLLER_HSE_EXECUTOR_H
 #define DATABASE_CONTROLLER_HSE_EXECUTOR_H
 
-
-#include <iostream>
 #include <memory>
 #include <unordered_set>
 
