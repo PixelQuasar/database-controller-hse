@@ -1,11 +1,22 @@
+include(FetchContent)
+
 cmake_minimum_required(VERSION 3.26)
 project(database_controller_hse)
 
 set(CMAKE_CXX_STANDARD 20)
 
-enable_testing()
+option(BUILD_TESTS "Build tests" OFF)
 
-add_subdirectory(external/googletest)
+if (BUILD_TESTS)
+    enable_testing()
+    FetchContent_Declare(
+            googletest
+            URL https://github.com/google/googletest/archive/refs/tags/release-1.12.1.zip
+    )
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+endif()
+
 add_subdirectory(src/Calculator)
 add_subdirectory(src/database/Database)
 add_subdirectory(src/database/Table)
