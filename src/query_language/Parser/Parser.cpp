@@ -1,8 +1,11 @@
 #include "Parser.h"
 
+#include <iostream>
 #include <algorithm>
 #include <cctype>
 #include <stdexcept>
+#include <memory>
+#include <vector>
 
 namespace database {
 
