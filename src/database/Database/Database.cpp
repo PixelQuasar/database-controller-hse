@@ -3,6 +3,7 @@
 //
 
 #include "Database.h"
+#include <stdexcept>
 
 namespace database {
 

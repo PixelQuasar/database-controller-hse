@@ -11,6 +11,7 @@
 #include <variant>
 #include <vector>
 #include <sstream>
+#include <memory>
 
 #include "../../Calculator/Calculator.h"
 

@@ -11,6 +11,9 @@
 #include "../Result/Result.h"
 #include "../Parser/Parser.h"
 #include <regex>
+#include <variant>
+#include <memory>
+#include <vector>
 
 namespace database {
 
@@ -185,46 +188,47 @@ Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
         } else if (const auto *selectStmt =
                        dynamic_cast<const SelectStatement *>(stmt.get())) {
             auto table = m_database.getTable(selectStmt->tableName);
-
-            for (const auto &column_name : selectStmt->columnNames) {
-                if (!table.get_column_to_row_offset().count(column_name) &&
-                    column_name != "*") {
-                    throw std::invalid_argument(
-                        "Invalid selector: " + column_name + ".");
-                }
-            }
-
-            auto filter_predicate = [table, selectStmt,
-                                     calc](const std::vector<DBType> &row) {
-                std::unordered_map<std::string, std::string> row_values = {};
-                for (const auto &[name, index] :
-                     table.get_column_to_row_offset()) {
-                    row_values[name] = dBTypeToString(row[index]);
-                }
-                return calculator::safeGet<bool>(
-                    calc.evaluate(selectStmt->predicate, row_values));
-            };
-
             std::vector<ResultRowType> result_rows;
 
-            auto rows = !selectStmt->predicate.empty()
+            if (selectStmt->foreignTableName.empty()) {
+                for (const auto &column_name: selectStmt->columnNames) {
+                    if (!table.get_column_to_row_offset().count(column_name) &&
+                        column_name != "*") {
+                        throw std::invalid_argument(
+                                "Invalid selector: " + column_name + ".");
+                    }
+                }
+
+                auto filter_predicate = [table, selectStmt,
+                        calc](const std::vector<DBType> &row) {
+                    std::unordered_map<std::string, std::string> row_values = {};
+                    for (const auto &[name, index]:
+                            table.get_column_to_row_offset()) {
+                        row_values[name] = dBTypeToString(row[index]);
+                    }
+                    return calculator::safeGet<bool>(
+                            calc.evaluate(selectStmt->predicate, row_values));
+                };
+
+                auto rows = !selectStmt->predicate.empty()
                             ? table.filter(filter_predicate)
                             : table.get_rows();
 
-            for (const auto &column : rows) {
-                std::unordered_map<std::string, DBType> row = {};
-                if (selectStmt->columnNames[0] == "*") {
-                    for (const auto &[name, index] :
-                         table.get_column_to_row_offset()) {
-                        row[name] = column[index];
-                    }
-                } else {
-                    for (const auto &column_name : selectStmt->columnNames) {
-                        row[column_name] = column
+                for (const auto &column: rows) {
+                    std::unordered_map<std::string, DBType> row = {};
+                    if (selectStmt->columnNames[0] == "*") {
+                        for (const auto &[name, index]:
+                                table.get_column_to_row_offset()) {
+                            row[name] = column[index];
+                        }
+                    } else {
+                        for (const auto &column_name: selectStmt->columnNames) {
+                            row[column_name] = column
                             [table.get_column_to_row_offset()[column_name]];
+                        }
                     }
+                    result_rows.emplace_back(row);
                 }
-                result_rows.emplace_back(row);
             }
 
             result = Result(std::move(result_rows));

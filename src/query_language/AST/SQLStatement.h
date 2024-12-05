@@ -4,8 +4,32 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include "../../types.h"
+
+namespace database {
+    class ColumnStatement {
+    public:
+        std::string name;
+        std::string table;
+
+        bool operator==(const ColumnStatement& other) const {
+            return (name == other.name && table == other.table);
+        }
+    };
+}
+
+template<>
+struct std::hash<database::ColumnStatement> {
+    std::size_t operator()(const database::ColumnStatement &k) const {
+        using std::size_t;
+        using std::hash;
+        using std::string;
+
+        return (hash<string>()(k.name) ^ (hash<string>()(k.table) << 1)) >> 1;
+    }
+};
 
 namespace database {
 class SQLStatement {
@@ -55,14 +79,23 @@ class InsertStatement : public SQLStatement {
 class SelectStatement : public SQLStatement {
    public:
     std::string tableName;
-    std::vector<std::string> columnNames;
+    std::vector<ColumnStatement> columnData;
+
+    // WHERE properties
     std::string predicate;
+
+    // JOIN properties
+    std::string foreignTableName;
+    std::string joinPredicate;
 
     std::string toString() const override {
         std::string result = "SELECT ";
-        for (size_t i = 0; i < columnNames.size(); ++i) {
-            result += columnNames[i];
-            if (i != columnNames.size() - 1) {
+        for (size_t i = 0; i < columnData.size(); ++i) {
+            if (!columnData[i].table.empty()) {
+                result += columnData[i].table + ".";
+            }
+            result += columnData[i].name;
+            if (i != columnData.size() - 1) {
                 result += ", ";
             }
         }
@@ -78,8 +111,14 @@ class SelectStatement : public SQLStatement {
 class UpdateStatement : public SQLStatement {
    public:
     std::string tableName;
-    std::unordered_map<std::string, std::string> newValues;
+    std::unordered_map<ColumnStatement, std::string> newValues;
+
+    // WHERE properties
     std::string predicate;
+
+    // JOIN properties
+    std::string foreignTableName;
+    std::string joinPredicate;
 
     std::string toString() const override {
         std::string result = "UPDATE ";
@@ -88,7 +127,10 @@ class UpdateStatement : public SQLStatement {
             if (!isFirst) {
                 result += ", ";
             }
-            result += column + " = " + value;
+            if (!column.table.empty()) {
+                result += column.table + ".";
+            }
+            result += column.name + " = " + value;
             isFirst = false;
         }
         result += " FROM " + tableName;
