@@ -1109,6 +1109,160 @@ TEST_F(ExecutorTest, ComplexQueryWithMultipleIndexes) {
     }
 }
 
+TEST_F(ExecutorTest, SelectWithJoin) {
+    auto createStmt = ("CREATE TABLE User (ID INT, Name VARCHAR, Age INT);");
+    auto createStmt2 =
+            ("CREATE TABLE Post (ID INT, AuthorId INT, Text VARCHAR);");
+    Executor executor(db);
+    executor.execute(createStmt);
+    executor.execute(createStmt2);
+
+    auto insertStmt1 = ("INSERT INTO User VALUES (1, \"Alice\", 25);");
+    auto insertStmt2 = ("INSERT INTO User VALUES (2, \"Bob\", 30);");
+    auto insertStmt3 = ("INSERT INTO User VALUES (3, \"John\", 31);");
+    executor.execute(insertStmt1);
+    executor.execute(insertStmt2);
+    executor.execute(insertStmt3);
+
+    auto insertStmt4 = ("INSERT INTO Post VALUES (1, 1, \"HELLO WORLD 1\");");
+    auto insertStmt5 = ("INSERT INTO Post VALUES (2, 1, \"HELLO WORLD 2\");");
+    auto insertStmt6 = ("INSERT INTO Post VALUES (3, 3, \"HELLO WORLD 3\");");
+    executor.execute(insertStmt4);
+    executor.execute(insertStmt5);
+    executor.execute(insertStmt6);
+
+    auto selectStmt = ("SELECT User.Name, Post.Text FROM User JOIN Post ON User.ID == Post.AuthorId;");
+
+    auto result = executor.execute(selectStmt);
+
+    EXPECT_TRUE(result.is_ok());
+    auto rows = result.get_payload();
+    ASSERT_EQ(rows.size(), 3);
+    EXPECT_EQ(std::get<std::string>(rows[0]["User.Name"]), "Alice");
+    EXPECT_EQ(std::get<std::string>(rows[0]["Post.Text"]), "HELLO WORLD 1");
+    EXPECT_EQ(std::get<std::string>(rows[1]["User.Name"]), "Alice");
+    EXPECT_EQ(std::get<std::string>(rows[1]["Post.Text"]), "HELLO WORLD 2");
+    EXPECT_EQ(std::get<std::string>(rows[2]["User.Name"]), "John");
+    EXPECT_EQ(std::get<std::string>(rows[2]["Post.Text"]), "HELLO WORLD 3");
+}
+
+TEST_F(ExecutorTest, SelectWithJoinAndWhere) {
+    auto createStmt = ("CREATE TABLE User (ID INT, Name VARCHAR, Age INT);");
+    auto createStmt2 =
+            ("CREATE TABLE Post (ID INT, AuthorId INT, Text VARCHAR);");
+    Executor executor(db);
+    executor.execute(createStmt);
+    executor.execute(createStmt2);
+
+    auto insertStmt1 = ("INSERT INTO User VALUES (1, \"Alice\", 25);");
+    auto insertStmt2 = ("INSERT INTO User VALUES (2, \"Bob\", 30);");
+    auto insertStmt3 = ("INSERT INTO User VALUES (3, \"John\", 31);");
+    executor.execute(insertStmt1);
+    executor.execute(insertStmt2);
+    executor.execute(insertStmt3);
+
+    auto insertStmt4 = ("INSERT INTO Post VALUES (1, 1, \"HELLO WORLD 1\");");
+    auto insertStmt5 = ("INSERT INTO Post VALUES (2, 1, \"HELLO WORLD 2\");");
+    auto insertStmt6 = ("INSERT INTO Post VALUES (3, 3, \"HELLO WORLD 3\");");
+    executor.execute(insertStmt4);
+    executor.execute(insertStmt5);
+    executor.execute(insertStmt6);
+
+    auto selectStmt = ("SELECT User.Name, Post.Text FROM User JOIN Post ON User.ID == Post.AuthorId WHERE User.ID == 1;");
+
+    auto result = executor.execute(selectStmt);
+
+    EXPECT_TRUE(result.is_ok());
+    auto rows = result.get_payload();
+    ASSERT_EQ(rows.size(), 2);
+    EXPECT_EQ(std::get<std::string>(rows[0]["User.Name"]), "Alice");
+    EXPECT_EQ(std::get<std::string>(rows[0]["Post.Text"]), "HELLO WORLD 1");
+    EXPECT_EQ(std::get<std::string>(rows[1]["User.Name"]), "Alice");
+    EXPECT_EQ(std::get<std::string>(rows[1]["Post.Text"]), "HELLO WORLD 2");
+}
+
+TEST_F(ExecutorTest, UpdateWithJoin) {
+    auto createStmt = ("CREATE TABLE User (ID INT, Name VARCHAR, Age INT);");
+    auto createStmt2 =
+            ("CREATE TABLE Post (ID INT, AuthorId INT, Text VARCHAR);");
+    Executor executor(db);
+    executor.execute(createStmt);
+    executor.execute(createStmt2);
+
+    auto insertStmt1 = ("INSERT INTO User VALUES (1, \"Alice\", 25);");
+    auto insertStmt2 = ("INSERT INTO User VALUES (2, \"Bob\", 30);");
+    auto insertStmt3 = ("INSERT INTO User VALUES (3, \"John\", 31);");
+    executor.execute(insertStmt1);
+    executor.execute(insertStmt2);
+    executor.execute(insertStmt3);
+
+    auto insertStmt4 = ("INSERT INTO Post VALUES (1, 1, \"HELLO WORLD 1\");");
+    auto insertStmt5 = ("INSERT INTO Post VALUES (2, 1, \"HELLO WORLD 2\");");
+    auto insertStmt6 = ("INSERT INTO Post VALUES (3, 3, \"HELLO WORLD 3\");");
+    executor.execute(insertStmt4);
+    executor.execute(insertStmt5);
+    executor.execute(insertStmt6);
+
+    auto updateStmt = ("UPDATE User JOIN Post ON User.ID == Post.AuthorId SET (User.Name = \"Alice2\");");
+
+    auto result = executor.execute(updateStmt);
+
+    EXPECT_TRUE(result.is_ok());
+
+    auto selectStmt = ("SELECT User.Name, Post.Text FROM User JOIN Post ON User.ID == Post.AuthorId WHERE User.ID == 1;");
+
+    result = executor.execute(selectStmt);
+
+    EXPECT_TRUE(result.is_ok());
+    auto rows = result.get_payload();
+    ASSERT_EQ(rows.size(), 2);
+    EXPECT_EQ(std::get<std::string>(rows[0]["User.Name"]), "Alice2");
+    EXPECT_EQ(std::get<std::string>(rows[0]["Post.Text"]), "HELLO WORLD 1");
+    EXPECT_EQ(std::get<std::string>(rows[1]["User.Name"]), "Alice2");
+    EXPECT_EQ(std::get<std::string>(rows[1]["Post.Text"]), "HELLO WORLD 2");
+}
+
+TEST_F(ExecutorTest, UpdateWithJoinAndWhere) {
+    auto createStmt = ("CREATE TABLE User (ID INT, Name VARCHAR, Age INT);");
+    auto createStmt2 =
+            ("CREATE TABLE Post (ID INT, AuthorId INT, Text VARCHAR);");
+    Executor executor(db);
+    executor.execute(createStmt);
+    executor.execute(createStmt2);
+
+    auto insertStmt1 = ("INSERT INTO User VALUES (1, \"Alice\", 25);");
+    auto insertStmt2 = ("INSERT INTO User VALUES (2, \"Bob\", 30);");
+    auto insertStmt3 = ("INSERT INTO User VALUES (3, \"John\", 31);");
+    executor.execute(insertStmt1);
+    executor.execute(insertStmt2);
+    executor.execute(insertStmt3);
+
+    auto insertStmt4 = ("INSERT INTO Post VALUES (1, 1, \"HELLO WORLD 1\");");
+    auto insertStmt5 = ("INSERT INTO Post VALUES (2, 1, \"HELLO WORLD 2\");");
+    auto insertStmt6 = ("INSERT INTO Post VALUES (3, 3, \"HELLO WORLD 3\");");
+    executor.execute(insertStmt4);
+    executor.execute(insertStmt5);
+    executor.execute(insertStmt6);
+
+    auto updateStmt = ("UPDATE User JOIN Post ON User.ID == Post.AuthorId SET (User.Name = \"Alice2\") WHERE User.ID == 1;");
+
+    auto result = executor.execute(updateStmt);
+
+    EXPECT_TRUE(result.is_ok());
+
+    auto selectStmt = ("SELECT User.Name, Post.Text FROM User JOIN Post ON User.ID == Post.AuthorId WHERE User.ID == 1;");
+
+    result = executor.execute(selectStmt);
+
+    EXPECT_TRUE(result.is_ok());
+    auto rows = result.get_payload();
+    ASSERT_EQ(rows.size(), 2);
+    EXPECT_EQ(std::get<std::string>(rows[0]["User.Name"]), "Alice2");
+    EXPECT_EQ(std::get<std::string>(rows[0]["Post.Text"]), "HELLO WORLD 1");
+    EXPECT_EQ(std::get<std::string>(rows[1]["User.Name"]), "Alice2");
+    EXPECT_EQ(std::get<std::string>(rows[1]["Post.Text"]), "HELLO WORLD 2");
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

@@ -609,3 +609,71 @@ TEST_F(ParserTest, ParseCreateIndexUnorderedMultipleColumns) {
     EXPECT_EQ(createIndexStmt->columns[1], "last_name");
     EXPECT_EQ(createIndexStmt->columns[2], "department");
 }
+
+TEST_F(ParserTest, ParseSelectWithJoin) {
+    std::string sql = "SELECT * FROM users JOIN departments ON users.department_id == departments.id;";
+    auto stmt = Parser::parse(sql);
+    auto selectStmt = std::dynamic_pointer_cast<SelectStatement>(stmt);
+    ASSERT_NE(selectStmt, nullptr);
+    EXPECT_EQ(selectStmt->tableName, "users");
+    ASSERT_EQ(selectStmt->columnData.size(), 1);
+    EXPECT_EQ(selectStmt->columnData[0].name, "*");
+    EXPECT_EQ(selectStmt->foreignTableName, "departments");
+    EXPECT_EQ(selectStmt->joinPredicate, "users.department_id == departments.id");
+}
+
+TEST_F(ParserTest, ParseSelectWithJoinAndWhere) {
+    std::string sql = "SELECT * FROM users JOIN departments ON users.department_id == departments.id WHERE users.active == true;";
+    auto stmt = Parser::parse(sql);
+    auto selectStmt = std::dynamic_pointer_cast<SelectStatement>(stmt);
+    ASSERT_NE(selectStmt, nullptr);
+    EXPECT_EQ(selectStmt->tableName, "users");
+    ASSERT_EQ(selectStmt->columnData.size(), 1);
+    EXPECT_EQ(selectStmt->columnData[0].name, "*");
+    EXPECT_EQ(selectStmt->foreignTableName, "departments");
+    EXPECT_EQ(selectStmt->joinPredicate, "users.department_id == departments.id");
+    EXPECT_EQ(selectStmt->predicate, "users.active == true");
+}
+
+TEST_F(ParserTest, ParseSelectWithJoinAndWhereAndColumns) {
+    std::string sql = "SELECT id, name FROM users JOIN departments ON users.department_id == departments.id WHERE users.active == true;";
+    auto stmt = Parser::parse(sql);
+    auto selectStmt = std::dynamic_pointer_cast<SelectStatement>(stmt);
+    ASSERT_NE(selectStmt, nullptr);
+    EXPECT_EQ(selectStmt->tableName, "users");
+    ASSERT_EQ(selectStmt->columnData.size(), 2);
+    EXPECT_EQ(selectStmt->columnData[0].name, "id");
+    EXPECT_EQ(selectStmt->columnData[1].name, "name");
+    EXPECT_EQ(selectStmt->foreignTableName, "departments");
+    EXPECT_EQ(selectStmt->joinPredicate, "users.department_id == departments.id");
+    EXPECT_EQ(selectStmt->predicate, "users.active == true");
+}
+
+TEST_F(ParserTest, ParseUpdateWithJoin) {
+    std::string sql = "UPDATE users JOIN departments ON users.department_id == departments.id SET (users.active = false) WHERE departments.name == \"Engineering\";";
+    auto stmt = Parser::parse(sql);
+    auto updateStmt = std::dynamic_pointer_cast<UpdateStatement>(stmt);
+    ColumnStatement usersActiveColumn = {"active", "users"};
+    ASSERT_NE(updateStmt, nullptr);
+    EXPECT_EQ(updateStmt->tableName, "users");
+    ASSERT_EQ(updateStmt->newValues.size(), 1);
+    EXPECT_EQ(updateStmt->newValues[usersActiveColumn], "false");
+    EXPECT_EQ(updateStmt->foreignTableName, "departments");
+    EXPECT_EQ(updateStmt->joinPredicate, "users.department_id == departments.id");
+    EXPECT_EQ(updateStmt->predicate, "departments.name == \"Engineering\"");
+}
+
+TEST_F(ParserTest, ParseUpdateWithJoinAndWhere) {
+    std::string sql = "UPDATE users JOIN departments ON users.department_id == departments.id SET (users.active = false) WHERE departments.name == \"Engineering\" AND users.id == 1;";
+    auto stmt = Parser::parse(sql);
+    auto updateStmt = std::dynamic_pointer_cast<UpdateStatement>(stmt);
+    ColumnStatement usersActiveColumn = {"active", "users"};
+    ASSERT_NE(updateStmt, nullptr);
+    EXPECT_EQ(updateStmt->tableName, "users");
+    ASSERT_EQ(updateStmt->newValues.size(), 1);
+    EXPECT_EQ(updateStmt->newValues[usersActiveColumn], "false");
+    EXPECT_EQ(updateStmt->foreignTableName, "departments");
+    EXPECT_EQ(updateStmt->joinPredicate, "users.department_id == departments.id");
+    EXPECT_EQ(updateStmt->predicate, "departments.name == \"Engineering\" AND users.id == 1");
+}
+
