@@ -7,6 +7,7 @@
 #include <memory>
 #include <regex>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -514,9 +515,12 @@ Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
                 table.remove_many(filter_predicate);
             }
         } else if (const auto *createIndexStmt =
-                    dynamic_cast<const CreateIndexStatement *>(stmt.get())) {
+                       dynamic_cast<const CreateIndexStatement *>(stmt.get())) {
             Table &table = m_database.getTable(createIndexStmt->tableName);
-            std::string indexTypeStr = (createIndexStmt->indexType == IndexType::ORDERED) ? "ordered" : "unordered";
+            std::string indexTypeStr =
+                (createIndexStmt->indexType == IndexType::ORDERED)
+                    ? "ordered"
+                    : "unordered";
             table.createIndex(indexTypeStr, createIndexStmt->columns);
         } else {
             throw std::runtime_error("Unsupported SQL statement.");
@@ -527,9 +531,39 @@ Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
     return result;
 }
 
+std::string preprocess(std::string query) {
+    std::unordered_map<std::string, std::string> keywords = {
+        {"create table", "CREATE TABLE"},
+        {"insert", "INSERT"},
+        {"where", "WHERE"},
+        {"by", "BY"},
+        {"on", "ON"},
+        {"join", "JOIN"},
+        {"select", "SELECT"},
+        {"update", "UPDATE"},
+        {"create index", "CREATE INDEX"}};
+
+    for (const auto &[key, value] : keywords) {
+        std::string pattern = "\\b" + key + "\\b";  // Match whole word
+        std::regex re(pattern,
+                      std::regex_constants::icase);  // Case-insensitive
+        query = std::regex_replace(query, re, value);
+    }
+
+    return query;
+}
+
+int main() {
+    std::string query = "select * from users where name = 'John'";
+    std::string result = preprocess(query);
+
+    std::cout << result << std::endl;
+    return 0;
+}
+
 Result Executor::execute(const std::string &sql) {
     try {
-        std::shared_ptr<SQLStatement> stmt = Parser::parse(sql);
+        std::shared_ptr<SQLStatement> stmt = Parser::parse(preprocess(sql));
         return Executor::execute(stmt);
     } catch (const std::exception &e) {
         return Result::errorResult(std::string(e.what()));

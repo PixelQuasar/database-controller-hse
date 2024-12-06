@@ -1,10 +1,11 @@
-#include <chrono>
 #include <gtest/gtest.h>
 
+#include <chrono>
+
 #include "../../database/Database/Database.h"
+#include "../AST/SQLStatement.h"
 #include "../Parser/Parser.h"
 #include "Executor.h"
-#include "../AST/SQLStatement.h"
 
 using namespace database;
 
@@ -26,6 +27,34 @@ TEST_F(ExecutorTest, ExecuteCreateTable) {
 
 TEST_F(ExecutorTest, ExecuteInsert) {
     auto createStmt = "CREATE TABLE Test (ID INT, Name VARCHAR);";
+    executor.execute(createStmt);
+
+    auto insertStmt = "INSERT INTO Test VALUES (1, \"Alice\");";
+    executor.execute(insertStmt);
+
+    auto& table = db.getTable("Test");
+    auto& data = table.get_rows();
+    ASSERT_EQ(data.size(), 1);
+    EXPECT_EQ(std::get<int>(data[0][0]), 1);
+    EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
+}
+
+TEST_F(ExecutorTest, ExecuteInsertRegister) {
+    auto createStmt = "create table Test (ID INT, Name VARCHAR);";
+    executor.execute(createStmt);
+
+    auto insertStmt = "INSERT INTO Test VALUES (1, \"Alice\");";
+    executor.execute(insertStmt);
+
+    auto& table = db.getTable("Test");
+    auto& data = table.get_rows();
+    ASSERT_EQ(data.size(), 1);
+    EXPECT_EQ(std::get<int>(data[0][0]), 1);
+    EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
+}
+
+TEST_F(ExecutorTest, ExecuteInsertRegister2) {
+    auto createStmt = "cREAte tabLE Test (ID INT, Name VARCHAR);";
     executor.execute(createStmt);
 
     auto insertStmt = "INSERT INTO Test VALUES (1, \"Alice\");";
@@ -968,7 +997,8 @@ TEST_F(ExecutorTest, ComplexDatabaseOperations) {
 }
 
 TEST_F(ExecutorTest, ExecuteCreateOrderedIndex) {
-    auto createTableStmt = "CREATE TABLE Users (ID INT, Login VARCHAR, IsAdmin BOOL);";
+    auto createTableStmt =
+        "CREATE TABLE Users (ID INT, Login VARCHAR, IsAdmin BOOL);";
     executor.execute(createTableStmt);
 
     auto createIndexStmt = "CREATE ORDERED INDEX ON Users BY Login;";
@@ -981,7 +1011,8 @@ TEST_F(ExecutorTest, ExecuteCreateOrderedIndex) {
 }
 
 TEST_F(ExecutorTest, ExecuteCreateUnorderedIndex) {
-    auto createTableStmt = "CREATE TABLE Users (ID INT, Login VARCHAR, IsAdmin BOOL);";
+    auto createTableStmt =
+        "CREATE TABLE Users (ID INT, Login VARCHAR, IsAdmin BOOL);";
     executor.execute(createTableStmt);
 
     auto createIndexStmt = "CREATE UNORDERED INDEX ON Users BY ID, Login;";
@@ -1018,28 +1049,39 @@ TEST_F(ExecutorTest, ExecuteCreateIndexWithInvalidType) {
 }
 
 TEST_F(ExecutorTest, QueryPerformanceWithIndex) {
-    auto createTableStmt = "CREATE TABLE Users (ID INT, Login VARCHAR, IsAdmin BOOL);";
+    auto createTableStmt =
+        "CREATE TABLE Users (ID INT, Login VARCHAR, IsAdmin BOOL);";
     executor.execute(createTableStmt);
 
     for (int i = 0; i < 10000; ++i) {
-        std::string insertStmt = "INSERT INTO Users VALUES (" + std::to_string(i) + ", 'user" + std::to_string(i) + "', " + (i % 2 == 0 ? "true" : "false") + ");";
+        std::string insertStmt =
+            "INSERT INTO Users VALUES (" + std::to_string(i) + ", 'user" +
+            std::to_string(i) + "', " + (i % 2 == 0 ? "true" : "false") + ");";
         executor.execute(insertStmt);
     }
 
     auto start = std::chrono::high_resolution_clock::now();
-    auto result = executor.execute("SELECT * FROM Users WHERE ID > 5000 AND ID < 6000;");
+    auto result =
+        executor.execute("SELECT * FROM Users WHERE ID > 5000 AND ID < 6000;");
     auto end = std::chrono::high_resolution_clock::now();
-    auto durationWithoutIndex = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    auto durationWithoutIndex =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+            .count();
 
     executor.execute("CREATE ORDERED INDEX ON Users BY ID;");
 
     start = std::chrono::high_resolution_clock::now();
-    result = executor.execute("SELECT * FROM Users WHERE ID > 5000 AND ID < 6000;");
+    result =
+        executor.execute("SELECT * FROM Users WHERE ID > 5000 AND ID < 6000;");
     end = std::chrono::high_resolution_clock::now();
-    auto durationWithIndex = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    auto durationWithIndex =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+            .count();
     EXPECT_LT(durationWithIndex, durationWithoutIndex);
-    std::cout << "Duration without index: " << durationWithoutIndex << " microseconds" << std::endl;
-    std::cout << "Duration with index: " << durationWithIndex << " microseconds" << std::endl;
+    std::cout << "Duration without index: " << durationWithoutIndex
+              << " microseconds" << std::endl;
+    std::cout << "Duration with index: " << durationWithIndex << " microseconds"
+              << std::endl;
 }
 
 TEST_F(ExecutorTest, ComplexQueryWithMultipleIndexes) {
@@ -1057,16 +1099,14 @@ TEST_F(ExecutorTest, ComplexQueryWithMultipleIndexes) {
     executor.execute(createTableStmt);
 
     for (int i = 0; i < 500000; ++i) {
-        std::string insertStmt = "INSERT INTO Employees VALUES (" +
-                                 std::to_string(i) + ", " +
-                                 std::to_string(1000 + i) + ", 'First" +
-                                 std::to_string(i) + "', 'Last" +
-                                 std::to_string(i) + "', " +
-                                 std::to_string(20 + (i % 30)) + ", " +
-                                 std::to_string(3000.0 + (i % 1000)) + ", " +
-                                 "'Dept" + std::to_string(i % 5) + "', " +
-                                 "'Pos" + std::to_string(i % 10) + "', " +
-                                 (i % 2 == 0 ? "true" : "false") + ");";
+        std::string insertStmt =
+            "INSERT INTO Employees VALUES (" + std::to_string(i) + ", " +
+            std::to_string(1000 + i) + ", 'First" + std::to_string(i) +
+            "', 'Last" + std::to_string(i) + "', " +
+            std::to_string(20 + (i % 30)) + ", " +
+            std::to_string(3000.0 + (i % 1000)) + ", " + "'Dept" +
+            std::to_string(i % 5) + "', " + "'Pos" + std::to_string(i % 10) +
+            "', " + (i % 2 == 0 ? "true" : "false") + ");";
         executor.execute(insertStmt);
     }
     auto start = std::chrono::high_resolution_clock::now();
@@ -1076,7 +1116,9 @@ TEST_F(ExecutorTest, ComplexQueryWithMultipleIndexes) {
         "(Department = 'Dept1' AND Position = 'Pos2') OR "
         "(IsActive = true AND EmpCode % 2 = 0);");
     auto end = std::chrono::high_resolution_clock::now();
-    auto durationWithoutIndex = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    auto durationWithoutIndex =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+            .count();
 
     executor.execute("CREATE ORDERED INDEX ON Employees BY EmpCode;");
     executor.execute("CREATE ORDERED INDEX ON Employees BY LastName;");
@@ -1093,18 +1135,26 @@ TEST_F(ExecutorTest, ComplexQueryWithMultipleIndexes) {
         "(Department = 'Dept1' AND Position = 'Pos2') OR "
         "(IsActive = true AND EmpCode % 2 = 0);");
     end = std::chrono::high_resolution_clock::now();
-    auto durationWithIndex = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    auto durationWithIndex =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+            .count();
 
-    std::cout << "Duration with multiple indexes: " << durationWithIndex << " microseconds" << std::endl;
-    std::cout << "Duration without index: " << durationWithoutIndex << " microseconds" << std::endl;
+    std::cout << "Duration with multiple indexes: " << durationWithIndex
+              << " microseconds" << std::endl;
+    std::cout << "Duration without index: " << durationWithoutIndex
+              << " microseconds" << std::endl;
 
     EXPECT_LT(durationWithIndex, durationWithoutIndex);
 
     auto rows = result.get_payload();
     for (const auto& row : rows) {
-        bool condition1 = (std::get<int>(row.at("Age")) > 25 && std::get<double>(row.at("Salary")) < 3500);
-        bool condition2 = (std::get<std::string>(row.at("Department")) == "Dept1" && std::get<std::string>(row.at("Position")) == "Pos2");
-        bool condition3 = (std::get<bool>(row.at("IsActive")) == true && std::get<int>(row.at("EmpCode")) % 2 == 0);
+        bool condition1 = (std::get<int>(row.at("Age")) > 25 &&
+                           std::get<double>(row.at("Salary")) < 3500);
+        bool condition2 =
+            (std::get<std::string>(row.at("Department")) == "Dept1" &&
+             std::get<std::string>(row.at("Position")) == "Pos2");
+        bool condition3 = (std::get<bool>(row.at("IsActive")) == true &&
+                           std::get<int>(row.at("EmpCode")) % 2 == 0);
         EXPECT_TRUE(condition1 || condition2 || condition3);
     }
 }
@@ -1112,7 +1162,7 @@ TEST_F(ExecutorTest, ComplexQueryWithMultipleIndexes) {
 TEST_F(ExecutorTest, SelectWithJoin) {
     auto createStmt = ("CREATE TABLE User (ID INT, Name VARCHAR, Age INT);");
     auto createStmt2 =
-            ("CREATE TABLE Post (ID INT, AuthorId INT, Text VARCHAR);");
+        ("CREATE TABLE Post (ID INT, AuthorId INT, Text VARCHAR);");
     Executor executor(db);
     executor.execute(createStmt);
     executor.execute(createStmt2);
@@ -1131,7 +1181,9 @@ TEST_F(ExecutorTest, SelectWithJoin) {
     executor.execute(insertStmt5);
     executor.execute(insertStmt6);
 
-    auto selectStmt = ("SELECT User.Name, Post.Text FROM User JOIN Post ON User.ID == Post.AuthorId;");
+    auto selectStmt =
+        ("SELECT User.Name, Post.Text FROM User JOIN Post ON User.ID == "
+         "Post.AuthorId;");
 
     auto result = executor.execute(selectStmt);
 
@@ -1149,7 +1201,7 @@ TEST_F(ExecutorTest, SelectWithJoin) {
 TEST_F(ExecutorTest, SelectWithJoinAndWhere) {
     auto createStmt = ("CREATE TABLE User (ID INT, Name VARCHAR, Age INT);");
     auto createStmt2 =
-            ("CREATE TABLE Post (ID INT, AuthorId INT, Text VARCHAR);");
+        ("CREATE TABLE Post (ID INT, AuthorId INT, Text VARCHAR);");
     Executor executor(db);
     executor.execute(createStmt);
     executor.execute(createStmt2);
@@ -1168,7 +1220,9 @@ TEST_F(ExecutorTest, SelectWithJoinAndWhere) {
     executor.execute(insertStmt5);
     executor.execute(insertStmt6);
 
-    auto selectStmt = ("SELECT User.Name, Post.Text FROM User JOIN Post ON User.ID == Post.AuthorId WHERE User.ID == 1;");
+    auto selectStmt =
+        ("SELECT User.Name, Post.Text FROM User JOIN Post ON User.ID == "
+         "Post.AuthorId WHERE User.ID == 1;");
 
     auto result = executor.execute(selectStmt);
 
@@ -1184,7 +1238,7 @@ TEST_F(ExecutorTest, SelectWithJoinAndWhere) {
 TEST_F(ExecutorTest, UpdateWithJoin) {
     auto createStmt = ("CREATE TABLE User (ID INT, Name VARCHAR, Age INT);");
     auto createStmt2 =
-            ("CREATE TABLE Post (ID INT, AuthorId INT, Text VARCHAR);");
+        ("CREATE TABLE Post (ID INT, AuthorId INT, Text VARCHAR);");
     Executor executor(db);
     executor.execute(createStmt);
     executor.execute(createStmt2);
@@ -1203,13 +1257,17 @@ TEST_F(ExecutorTest, UpdateWithJoin) {
     executor.execute(insertStmt5);
     executor.execute(insertStmt6);
 
-    auto updateStmt = ("UPDATE User JOIN Post ON User.ID == Post.AuthorId SET (User.Name = \"Alice2\");");
+    auto updateStmt =
+        ("UPDATE User JOIN Post ON User.ID == Post.AuthorId SET (User.Name = "
+         "\"Alice2\");");
 
     auto result = executor.execute(updateStmt);
 
     EXPECT_TRUE(result.is_ok());
 
-    auto selectStmt = ("SELECT User.Name, Post.Text FROM User JOIN Post ON User.ID == Post.AuthorId WHERE User.ID == 1;");
+    auto selectStmt =
+        ("SELECT User.Name, Post.Text FROM User JOIN Post ON User.ID == "
+         "Post.AuthorId WHERE User.ID == 1;");
 
     result = executor.execute(selectStmt);
 
@@ -1225,7 +1283,7 @@ TEST_F(ExecutorTest, UpdateWithJoin) {
 TEST_F(ExecutorTest, UpdateWithJoinAndWhere) {
     auto createStmt = ("CREATE TABLE User (ID INT, Name VARCHAR, Age INT);");
     auto createStmt2 =
-            ("CREATE TABLE Post (ID INT, AuthorId INT, Text VARCHAR);");
+        ("CREATE TABLE Post (ID INT, AuthorId INT, Text VARCHAR);");
     Executor executor(db);
     executor.execute(createStmt);
     executor.execute(createStmt2);
@@ -1244,13 +1302,17 @@ TEST_F(ExecutorTest, UpdateWithJoinAndWhere) {
     executor.execute(insertStmt5);
     executor.execute(insertStmt6);
 
-    auto updateStmt = ("UPDATE User JOIN Post ON User.ID == Post.AuthorId SET (User.Name = \"Alice2\") WHERE User.ID == 1;");
+    auto updateStmt =
+        ("UPDATE User JOIN Post ON User.ID == Post.AuthorId SET (User.Name = "
+         "\"Alice2\") WHERE User.ID == 1;");
 
     auto result = executor.execute(updateStmt);
 
     EXPECT_TRUE(result.is_ok());
 
-    auto selectStmt = ("SELECT User.Name, Post.Text FROM User JOIN Post ON User.ID == Post.AuthorId WHERE User.ID == 1;");
+    auto selectStmt =
+        ("SELECT User.Name, Post.Text FROM User JOIN Post ON User.ID == "
+         "Post.AuthorId WHERE User.ID == 1;");
 
     result = executor.execute(selectStmt);
 
