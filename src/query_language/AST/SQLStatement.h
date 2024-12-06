@@ -8,6 +8,12 @@
 #include "../../types.h"
 
 namespace database {
+
+enum class IndexType {
+    ORDERED,
+    UNORDERED
+};
+
 class SQLStatement {
    public:
     virtual ~SQLStatement() = default;
@@ -115,6 +121,24 @@ class DeleteStatement : public SQLStatement {
     }
 };
 
+class CreateIndexStatement : public SQLStatement {
+   public:
+    IndexType indexType;
+    std::string tableName;
+    std::vector<std::string> columns;
+
+    std::string toString() const override {
+        std::string result = "CREATE INDEX ON " + tableName + " (";
+        for (size_t i = 0; i < columns.size(); ++i) {
+            result += columns[i];
+            if (i != columns.size() - 1) {
+                result += ", ";
+            }
+        }
+        result += ");";
+        return result;
+    }
+};
 }  // namespace database
 
 #endif  // DATABASE_CONTROLLER_HSE_SQLSTATEMENT_H
