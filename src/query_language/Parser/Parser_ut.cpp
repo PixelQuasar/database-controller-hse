@@ -508,3 +508,104 @@ TEST_F(ParserTest, ParseDeleteWithNewlines) {
     EXPECT_EQ(deleteStmt->tableName, "Test");
     EXPECT_EQ(deleteStmt->predicate, "ID == 1");
 }
+
+TEST_F(ParserTest, ParseCreateIndexOrdered) {
+    std::string sql = "CREATE ORDERED INDEX ON users BY login;";
+    auto stmt = Parser::parse(sql);
+    auto createIndexStmt = std::dynamic_pointer_cast<CreateIndexStatement>(stmt);
+    ASSERT_NE(createIndexStmt, nullptr);
+    EXPECT_EQ(createIndexStmt->indexType, IndexType::ORDERED);
+    EXPECT_EQ(createIndexStmt->tableName, "users");
+    ASSERT_EQ(createIndexStmt->columns.size(), 1);
+    EXPECT_EQ(createIndexStmt->columns[0], "login");
+}
+
+TEST_F(ParserTest, ParseCreateIndexUnordered) {
+    std::string sql = "CREATE UNORDERED INDEX ON users BY is_admin;";
+    auto stmt = Parser::parse(sql);
+    auto createIndexStmt = std::dynamic_pointer_cast<CreateIndexStatement>(stmt);
+    ASSERT_NE(createIndexStmt, nullptr);
+    EXPECT_EQ(createIndexStmt->indexType, IndexType::UNORDERED);
+    EXPECT_EQ(createIndexStmt->tableName, "users");
+    ASSERT_EQ(createIndexStmt->columns.size(), 1);
+    EXPECT_EQ(createIndexStmt->columns[0], "is_admin");
+}
+
+TEST_F(ParserTest, ParseCreateIndexMultipleColumns) {
+    std::string sql = "CREATE UNORDERED INDEX ON employees BY first_name, last_name;";
+    auto stmt = Parser::parse(sql);
+    auto createIndexStmt = std::dynamic_pointer_cast<CreateIndexStatement>(stmt);
+    ASSERT_NE(createIndexStmt, nullptr);
+    EXPECT_EQ(createIndexStmt->indexType, IndexType::UNORDERED);
+    EXPECT_EQ(createIndexStmt->tableName, "employees");
+    ASSERT_EQ(createIndexStmt->columns.size(), 2);
+    EXPECT_EQ(createIndexStmt->columns[0], "first_name");
+    EXPECT_EQ(createIndexStmt->columns[1], "last_name");
+}
+
+TEST_F(ParserTest, ParseCreateIndexWithWhitespace) {
+    std::string sql = "CREATE   ORDERED   INDEX   ON   users   BY   login   ;";
+    auto stmt = Parser::parse(sql);
+    auto createIndexStmt = std::dynamic_pointer_cast<CreateIndexStatement>(stmt);
+    ASSERT_NE(createIndexStmt, nullptr);
+    EXPECT_EQ(createIndexStmt->indexType, IndexType::ORDERED);
+    EXPECT_EQ(createIndexStmt->tableName, "users");
+    ASSERT_EQ(createIndexStmt->columns.size(), 1);
+    EXPECT_EQ(createIndexStmt->columns[0], "login");
+}
+
+TEST_F(ParserTest, ParseCreateIndexMissingSemicolon) {
+    std::string sql = "CREATE ORDERED INDEX ON users BY login";
+    EXPECT_THROW(Parser::parse(sql), std::runtime_error);
+}
+
+TEST_F(ParserTest, ParseCreateIndexInvalidType) {
+    std::string sql = "CREATE NON_EXISTENT INDEX ON users BY login;";
+    EXPECT_THROW(Parser::parse(sql), std::runtime_error);
+}
+
+TEST_F(ParserTest, ParseCreateIndexMissingBy) {
+    std::string sql = "CREATE ORDERED INDEX ON users login;";
+    EXPECT_THROW(Parser::parse(sql), std::runtime_error);
+}
+
+TEST_F(ParserTest, ParseCreateIndexEmptyColumns) {
+    std::string sql = "CREATE UNORDERED INDEX ON users BY ();";
+    EXPECT_THROW(Parser::parse(sql), std::runtime_error);
+}
+
+TEST_F(ParserTest, ParseCreateIndexExtraComma) {
+    std::string sql = "CREATE ORDERED INDEX ON users BY login, ;";
+    EXPECT_THROW(Parser::parse(sql), std::runtime_error);
+}
+
+TEST_F(ParserTest, ParseCreateIndexNoColumns) {
+    std::string sql = "CREATE UNORDERED INDEX ON users BY;";
+    EXPECT_THROW(Parser::parse(sql), std::runtime_error);
+}
+
+TEST_F(ParserTest, ParseCreateIndexOrderedMultipleColumns) {
+    std::string sql = "CREATE ORDERED INDEX ON users BY login, email, created_at;";
+    auto stmt = Parser::parse(sql);
+    auto createIndexStmt = std::dynamic_pointer_cast<CreateIndexStatement>(stmt);
+    ASSERT_NE(createIndexStmt, nullptr);
+    EXPECT_EQ(createIndexStmt->indexType, IndexType::ORDERED);
+    EXPECT_EQ(createIndexStmt->tableName, "users");
+    ASSERT_EQ(createIndexStmt->columns.size(), 3);
+    EXPECT_EQ(createIndexStmt->columns[0], "login");
+    EXPECT_EQ(createIndexStmt->columns[1], "email");
+    EXPECT_EQ(createIndexStmt->columns[2], "created_at");
+}
+
+TEST_F(ParserTest, ParseCreateIndexUnorderedMultipleColumns) {
+    std::string sql = "CREATE UNORDERED INDEX ON employees BY first_name, last_name, department;";
+    auto stmt = Parser::parse(sql);
+    auto createIndexStmt = std::dynamic_pointer_cast<CreateIndexStatement>(stmt);
+    ASSERT_NE(createIndexStmt, nullptr);
+    EXPECT_EQ(createIndexStmt->indexType, IndexType::UNORDERED);
+    EXPECT_EQ(createIndexStmt->tableName, "employees");
+    ASSERT_EQ(createIndexStmt->columns.size(), 3);
+    EXPECT_EQ(createIndexStmt->columns[0], "first_name");
+    EXPECT_EQ(createIndexStmt->columns[1], "last_name");
+    EXPECT_EQ(createIndexStmt->columns[2], "department");
+}

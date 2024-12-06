@@ -69,10 +69,16 @@ std::unordered_map<std::string, std::string> Parser::parseAssignValues() {
 std::shared_ptr<SQLStatement> Parser::parseStatement() {
     skipWhitespace();
     if (matchKeyword("CREATE")) {
-        if (!matchKeyword("TABLE")) {
-            throw std::runtime_error("Expected TABLE after CREATE");
+        skipWhitespace();
+        if (matchKeyword("TABLE")) {
+            return parseCreateTable();
+        } else if (matchKeyword("ORDERED")) {
+            return parseCreateIndex(IndexType::ORDERED);
+        } else if (matchKeyword("UNORDERED")) {
+            return parseCreateIndex(IndexType::UNORDERED);
+        } else {
+            throw std::runtime_error("Expected ORDERED or UNORDERED after CREATE");
         }
-        return parseCreateTable();
     } else if (matchKeyword("INSERT")) {
         if (!matchKeyword("INTO")) {
             throw std::runtime_error("Expected INTO after INSERT");
@@ -477,6 +483,47 @@ std::shared_ptr<DeleteStatement> Parser::parseDelete() {
     }
 
     return deleteStmt;
+}
+
+std::shared_ptr<CreateIndexStatement> Parser::parseCreateIndex(IndexType indexType) {
+    CreateIndexStatement createIndexStmt;
+    createIndexStmt.indexType = indexType;
+
+    if (!matchKeyword("INDEX")) {
+        throw std::runtime_error("Expected INDEX after index type");
+    }
+
+    if (!matchKeyword("ON")) {
+        throw std::runtime_error("Expected ON after INDEX");
+    }
+
+    createIndexStmt.tableName = parseIdentifier();
+    skipWhitespace();
+
+    if (!matchKeyword("BY")) {
+        throw std::runtime_error("Expected BY after table name in CREATE INDEX");
+    }
+
+    skipWhitespace();
+
+    while (pos_ < sql_.size()) {
+        std::string column = parseIdentifier();
+        createIndexStmt.columns.push_back(column);
+        skipWhitespace();
+
+        if (pos_ < sql_.size() && sql_[pos_] == ',') {
+            pos_++;
+            skipWhitespace();
+            continue;
+        } else if (pos_ < sql_.size() && sql_[pos_] == ';') {
+            pos_++;
+            break;
+        } else {
+            throw std::runtime_error("Expected ',' or ';' in column list of CREATE INDEX");
+        }
+    }
+
+    return std::make_shared<CreateIndexStatement>(createIndexStmt);
 }
 
 void Parser::skipWhitespace() {

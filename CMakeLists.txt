@@ -8,7 +8,17 @@ set(CMAKE_CXX_STANDARD 20)
 option(BUILD_TESTS "Build tests" OFF)
 
 enable_testing()
-add_subdirectory(external/googletest)
+
+# Set the directory where external content will be downloaded
+set(FETCHCONTENT_BASE_DIR ${CMAKE_SOURCE_DIR}/external)
+
+# FetchContent for googletest
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/refs/heads/main.zip
+  SOURCE_DIR ${FETCHCONTENT_BASE_DIR}/googletest
+)
+FetchContent_MakeAvailable(googletest)
 
 add_subdirectory(src/Calculator)
 add_subdirectory(src/database/Database)
