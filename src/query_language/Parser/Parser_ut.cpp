@@ -74,7 +74,7 @@ TEST_F(ParserTest, ComplexParsingScenario) {
             {"FirstName", DataTypeName::STRING},
             {"LastName", DataTypeName::STRING},
             {"Age", DataTypeName::INT},
-            {"Salary", DataTypeName::DOUBLE },
+            {"Salary", DataTypeName::DOUBLE},
             {"IsManager", DataTypeName::BOOL},
             {"IsFullTime", DataTypeName::BOOL},
             {"YearsOfService", DataTypeName::DOUBLE},
@@ -384,8 +384,8 @@ TEST_F(ParserTest, ParseSelect) {
     auto selectStmt = dynamic_cast<SelectStatement*>(stmt.get());
     ASSERT_NE(selectStmt, nullptr);
     EXPECT_EQ(selectStmt->tableName, "Test");
-    ASSERT_EQ(selectStmt->columnNames.size(), 1);
-    EXPECT_EQ(selectStmt->columnNames[0], "*");
+    ASSERT_EQ(selectStmt->columnData.size(), 1);
+    EXPECT_EQ(selectStmt->columnData[0].name, "*");
     EXPECT_TRUE(selectStmt->predicate.empty());
 }
 
@@ -394,9 +394,9 @@ TEST_F(ParserTest, ParseSelectWithColumns) {
     auto selectStmt = dynamic_cast<SelectStatement*>(stmt.get());
     ASSERT_NE(selectStmt, nullptr);
     EXPECT_EQ(selectStmt->tableName, "Test");
-    ASSERT_EQ(selectStmt->columnNames.size(), 2);
-    EXPECT_EQ(selectStmt->columnNames[0], "ID");
-    EXPECT_EQ(selectStmt->columnNames[1], "Name");
+    ASSERT_EQ(selectStmt->columnData.size(), 2);
+    EXPECT_EQ(selectStmt->columnData[0].name, "ID");
+    EXPECT_EQ(selectStmt->columnData[1].name, "Name");
     EXPECT_TRUE(selectStmt->predicate.empty());
 }
 
@@ -405,8 +405,8 @@ TEST_F(ParserTest, ParseSelectWithPredicate) {
     auto selectStmt = dynamic_cast<SelectStatement*>(stmt.get());
     ASSERT_NE(selectStmt, nullptr);
     EXPECT_EQ(selectStmt->tableName, "Test");
-    ASSERT_EQ(selectStmt->columnNames.size(), 1);
-    EXPECT_EQ(selectStmt->columnNames[0], "*");
+    ASSERT_EQ(selectStmt->columnData.size(), 1);
+    EXPECT_EQ(selectStmt->columnData[0].name, "*");
     EXPECT_EQ(selectStmt->predicate, "ID == 1");
 }
 
@@ -416,8 +416,8 @@ TEST_F(ParserTest, ParseSelectWithComplexPredicate) {
     auto selectStmt = dynamic_cast<SelectStatement*>(stmt.get());
     ASSERT_NE(selectStmt, nullptr);
     EXPECT_EQ(selectStmt->tableName, "Test");
-    ASSERT_EQ(selectStmt->columnNames.size(), 1);
-    EXPECT_EQ(selectStmt->columnNames[0], "*");
+    ASSERT_EQ(selectStmt->columnData.size(), 1);
+    EXPECT_EQ(selectStmt->columnData[0].name, "*");
     EXPECT_EQ(selectStmt->predicate, "(ID == 1) && (Name == \"Alice\")");
 }
 
@@ -428,8 +428,8 @@ TEST_F(ParserTest, ParseUpdate) {
     ASSERT_NE(updateStmt, nullptr);
     EXPECT_EQ(updateStmt->tableName, "Test");
     ASSERT_EQ(updateStmt->newValues.size(), 2);
-    EXPECT_EQ(updateStmt->newValues["ID"], "1");
-    EXPECT_EQ(updateStmt->newValues["Name"], "\"Alice\"");
+    EXPECT_EQ(updateStmt->newValues[{"ID"}], "1");
+    EXPECT_EQ(updateStmt->newValues[{"Name"}], "\"Alice\"");
     EXPECT_EQ(updateStmt->predicate, "ID == 2");
 }
 
@@ -441,8 +441,8 @@ TEST_F(ParserTest, ParseUpdateWithComplexExpressions) {
     ASSERT_NE(updateStmt, nullptr);
     EXPECT_EQ(updateStmt->tableName, "Test");
     ASSERT_EQ(updateStmt->newValues.size(), 2);
-    EXPECT_EQ(updateStmt->newValues["ID"], "1 + 2 * 3");
-    EXPECT_EQ(updateStmt->newValues["Name"], "\"Alice\" + \"Smith\"");
+    EXPECT_EQ(updateStmt->newValues[{"ID"}], "1 + 2 * 3");
+    EXPECT_EQ(updateStmt->newValues[{"Name"}], "\"Alice\" + \"Smith\"");
     EXPECT_EQ(updateStmt->predicate, "ID == 2");
 }
 
@@ -454,8 +454,8 @@ TEST_F(ParserTest, ParseUpdateWithWhitespace) {
     ASSERT_NE(updateStmt, nullptr);
     EXPECT_EQ(updateStmt->tableName, "Test");
     ASSERT_EQ(updateStmt->newValues.size(), 2);
-    EXPECT_EQ(updateStmt->newValues["ID"], "1");
-    EXPECT_EQ(updateStmt->newValues["Name"], "\"Alice\"");
+    EXPECT_EQ(updateStmt->newValues[{"ID"}], "1");
+    EXPECT_EQ(updateStmt->newValues[{"Name"}], "\"Alice\"");
     EXPECT_EQ(updateStmt->predicate, "ID == 2");
 }
 
@@ -469,8 +469,8 @@ TEST_F(ParserTest, ParseUpdateWithNewlines) {
     ASSERT_NE(updateStmt, nullptr);
     EXPECT_EQ(updateStmt->tableName, "Test");
     ASSERT_EQ(updateStmt->newValues.size(), 2);
-    EXPECT_EQ(updateStmt->newValues["ID"], "1");
-    EXPECT_EQ(updateStmt->newValues["Name"], "\"Alice\"");
+    EXPECT_EQ(updateStmt->newValues[{"ID"}], "1");
+    EXPECT_EQ(updateStmt->newValues[{"Name"}], "\"Alice\"");
     EXPECT_EQ(updateStmt->predicate, "ID == 2");
 }
 

@@ -18,6 +18,7 @@ class Database {
     void createTable(const std::string& name, const SchemeType& columns);
     void insertInto(const std::string& tableName, const RowType& values);
     Table& getTable(const std::string& name);
+    bool hasTable(const std::string& name) const;
 
    private:
     std::unordered_map<std::string, Table> tables_;

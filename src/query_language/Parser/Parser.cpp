@@ -1,10 +1,10 @@
 #include "Parser.h"
 
-#include <iostream>
 #include <algorithm>
 #include <cctype>
-#include <stdexcept>
+#include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <vector>
 
 namespace database {
@@ -32,7 +32,8 @@ std::unordered_map<std::string, std::string> Parser::parseAssignValues() {
         skipWhitespace();
 
         if (pos_ >= sql_.size() || sql_[pos_] != '=') {
-            throw std::runtime_error("Expected '=' after column name: " + columnName);
+            throw std::runtime_error("Expected '=' after column name: " +
+                                     columnName);
         }
         pos_++;
         skipWhitespace();
@@ -261,13 +262,21 @@ std::shared_ptr<SelectStatement> Parser::parseSelect() {
     auto selectStmt = std::make_shared<SelectStatement>();
 
     skipWhitespace();
-    std::vector<std::string> columns = {};
+    std::vector<ColumnStatement> columns = {};
 
     do {
-        columns.push_back(parseIdentifier());
+        std::string rawColumn = parseIdentifier();
+        std::string table, name;
+        if (matchCharacter('.')) {
+            table = rawColumn;
+            rawColumn = parseIdentifier();
+        } else {
+            table = "";
+        }
+        columns.push_back({rawColumn, table});
     } while (sql_[pos_++] == ',');
 
-    selectStmt->columnNames = columns;
+    selectStmt->columnData = columns;
 
     skipWhitespace();
 
@@ -281,13 +290,53 @@ std::shared_ptr<SelectStatement> Parser::parseSelect() {
 
     skipWhitespace();
 
-    if (matchKeyword("WHERE")) {
+    if (sql_[pos_] == ';') {
+        return selectStmt;
+    }
+
+    std::string modifier = parseIdentifier();
+
+    if (modifier == "WHERE") {
         std::string predicate;
         while (pos_ < sql_.size() && sql_[pos_] != ';') {
             predicate += sql_[pos_++];
         }
         predicate = trim(predicate);
         selectStmt->predicate = predicate;
+    } else if (modifier == "JOIN") {
+        skipWhitespace();
+        selectStmt->foreignTableName = parseIdentifier();
+
+        skipWhitespace();
+        if (!matchKeyword("ON")) {
+            throw std::runtime_error("Expected ON after JOIN");
+        }
+
+        bool withWhere = false;
+
+        std::string joinPredicate;
+        while (pos_ < sql_.size() && sql_[pos_] != ';') {
+            if (pos_ + 5 < sql_.size() && sql_.substr(pos_, 5) == "WHERE") {
+                withWhere = true;
+                break;
+            }
+            joinPredicate += sql_[pos_++];
+        }
+        joinPredicate = trim(joinPredicate);
+
+        selectStmt->joinPredicate = joinPredicate;
+
+        skipWhitespace();
+
+        if (matchKeyword("WHERE")) {
+            std::string predicate;
+            while (pos_ < sql_.size() && sql_[pos_] != ';') {
+                predicate += sql_[pos_++];
+            }
+            predicate = trim(predicate);
+
+            selectStmt->predicate = predicate;
+        }
     }
 
     return selectStmt;
@@ -301,14 +350,34 @@ std::shared_ptr<UpdateStatement> Parser::parseUpdate() {
     updateStmt->tableName = tableName;
 
     if (!matchKeyword("SET")) {
-        throw std::runtime_error("Expected SET after table name in UPDATE statement.");
+        throw std::runtime_error(
+            "Expected SET after table name in UPDATE statement.");
     }
 
     pos_++;
-    updateStmt->newValues = parseAssignValues();
+    // updateStmt->newValues = parseAssignValues();
+    std::unordered_map<std::string, std::string> rawValues =
+        parseAssignValues();
+
+    for (const auto& [str, value] : rawValues) {
+        ColumnStatement column;
+
+        std::size_t dotIndex = str.find('.');
+        if (dotIndex != std::string::npos) {
+            column.table = str.substr(0, dotIndex);
+            column.name = str.substr(dotIndex + 1);
+        } else {
+            column.name = str;
+        }
+
+        updateStmt->newValues[column] = value;
+    }
+
     skipWhitespace();
 
-    if (matchKeyword("WHERE")) {
+    std::string modifier = parseIdentifier();
+
+    if (modifier == "WHERE") {
         std::string predicate;
         skipWhitespace();
 
@@ -319,7 +388,7 @@ std::shared_ptr<UpdateStatement> Parser::parseUpdate() {
 
         std::string cleanPredicate;
         bool lastWasSpace = true;
-        
+
         for (char c : predicate) {
             if (std::isspace(c)) {
                 if (!lastWasSpace) {
@@ -331,12 +400,46 @@ std::shared_ptr<UpdateStatement> Parser::parseUpdate() {
                 lastWasSpace = false;
             }
         }
-        
+
         if (!cleanPredicate.empty() && cleanPredicate.back() == ' ') {
             cleanPredicate.pop_back();
         }
 
         updateStmt->predicate = cleanPredicate;
+    } else if (modifier == "JOIN") {
+        skipWhitespace();
+        updateStmt->foreignTableName = parseIdentifier();
+
+        skipWhitespace();
+        if (!matchKeyword("ON")) {
+            throw std::runtime_error("Expected ON after JOIN");
+        }
+
+        bool withWhere = false;
+
+        std::string joinPredicate;
+        while (pos_ < sql_.size() && sql_[pos_] != ';') {
+            if (pos_ + 5 < sql_.size() && sql_.substr(pos_, 5) == "WHERE") {
+                withWhere = true;
+                break;
+            }
+            joinPredicate += sql_[pos_++];
+        }
+        joinPredicate = trim(joinPredicate);
+
+        updateStmt->joinPredicate = joinPredicate;
+
+        skipWhitespace();
+
+        if (matchKeyword("WHERE")) {
+            std::string predicate;
+            while (pos_ < sql_.size() && sql_[pos_] != ';') {
+                predicate += sql_[pos_++];
+            }
+            predicate = trim(predicate);
+
+            updateStmt->predicate = predicate;
+        }
     }
 
     return updateStmt;
@@ -352,14 +455,14 @@ std::shared_ptr<DeleteStatement> Parser::parseDelete() {
     if (matchKeyword("WHERE")) {
         std::string predicate;
         skipWhitespace();
-        
+
         while (pos_ < sql_.size() && sql_[pos_] != ';') {
             predicate += sql_[pos_++];
         }
-        
+
         std::string cleanPredicate;
         bool lastWasSpace = true;
-        
+
         for (char c : predicate) {
             if (std::isspace(c)) {
                 if (!lastWasSpace) {
@@ -371,11 +474,11 @@ std::shared_ptr<DeleteStatement> Parser::parseDelete() {
                 lastWasSpace = false;
             }
         }
-        
+
         if (!cleanPredicate.empty() && cleanPredicate.back() == ' ') {
             cleanPredicate.pop_back();
         }
-        
+
         deleteStmt->predicate = cleanPredicate;
     }
 
@@ -576,7 +679,8 @@ std::string Parser::parseExpression() {
             break;
         }
 
-        if (c == '+' || c == '-' || c == '*' || c == '/' || c == '&' || c == '|') {
+        if (c == '+' || c == '-' || c == '*' || c == '/' || c == '&' ||
+            c == '|') {
             expectingMore = true;
         } else if (!std::isspace(c)) {
             expectingMore = false;

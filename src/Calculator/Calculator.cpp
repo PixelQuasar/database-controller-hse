@@ -1,6 +1,8 @@
 #include "Calculator.h"
 
 #include <cctype>
+#include <iostream>
+#include <memory>
 #include <stack>
 #include <stdexcept>
 #include <string>
@@ -37,7 +39,8 @@ Value Calculator::evaluate(
     std::stack<std::string> operatorStack;
 
     for (const auto& token : tokens) {
-        if (std::isdigit(token[0] && !(token.length() > 1 && token[1] == 'x')) ||
+        if (std::isdigit(token[0] &&
+                         !(token.length() > 1 && token[1] == 'x')) ||
             (token[0] == '-' && token.size() > 1 && std::isdigit(token[1])) ||
             (token[0] == '.' && token.size() > 1)) {
             outputQueue.push_back(token);
@@ -95,7 +98,8 @@ Value Calculator::evaluate(
                 valueStack.push(result);
             }
         } else {
-            if ((std::isdigit(token[0]) && !(token.length() > 1 && token[1] == 'x')) ||
+            if ((std::isdigit(token[0]) &&
+                 !(token.length() > 1 && token[1] == 'x')) ||
                 (token[0] == '-' && token.size() > 1 &&
                  std::isdigit(token[1])) ||
                 (token[0] == '.' && token.size() > 1)) {
@@ -106,13 +110,14 @@ Value Calculator::evaluate(
                 }
             } else if (token == "true" || token == "false") {
                 valueStack.push(token == "true");
-            }else if (token.length() > 1 && token[1] == 'x') {
+            } else if (token.length() > 1 && token[1] == 'x') {
                 database::bytebuffer newBuffer = {};
-                for (size_t i = 2; i < token.length(); i+=2) {
-                    newBuffer.push_back(static_cast<char>(std::stoi(token.substr(i, 2), nullptr, 16)));
+                for (size_t i = 2; i < token.length(); i += 2) {
+                    newBuffer.push_back(static_cast<char>(
+                        std::stoi(token.substr(i, 2), nullptr, 16)));
                 }
                 valueStack.emplace(newBuffer);
-            }else {
+            } else {
                 valueStack.emplace(std::string(token));
             }
         }
@@ -164,12 +169,16 @@ std::vector<std::string> Calculator::tokenize(
                            isOperator(std::string(1, expression[i - 1]))))) {
             token += ch;
         } else if (std::isalpha(ch)) {
-            while (i < expression.length() && (std::isdigit(expression[i]) || std::isalpha(expression[i]) ||expression[i] == '_')) {
+            while (i < expression.length() &&
+                   (std::isdigit(expression[i]) ||
+                    std::isalpha(expression[i]) || expression[i] == '_' ||
+                    expression[i] == '.')) {
                 token += expression[i];
                 ++i;
             }
             --i;
-            if (token == "true" || token == "false" || (token.substr(0, 2) == "0x" && token.length() % 2 == 0)) {
+            if (token == "true" || token == "false" ||
+                (token.substr(0, 2) == "0x" && token.length() % 2 == 0)) {
                 tokens.push_back(token);
             } else {
                 if (external_values.find(token) != external_values.end()) {
@@ -311,7 +320,7 @@ Value Calculator::applyOperator(const std::string& op, const Value& a,
 
             if constexpr (std::is_same_v<T1, database::bytebuffer> &&
                           std::is_same_v<T2, database::bytebuffer>) {
-                if (op == "+")  {
+                if (op == "+") {
                     auto a = static_cast<database::bytebuffer>(lhs);
                     auto b = static_cast<database::bytebuffer>(lhs);
                     a.insert(a.end(), b.begin(), b.end());

@@ -4,6 +4,8 @@
 
 #include "Database.h"
 
+#include <stdexcept>
+
 namespace database {
 
 void Database::createTable(const std::string& name, const SchemeType& columns) {
@@ -38,4 +40,7 @@ Table& Database::getTable(const std::string& name) {
     return it->second;
 }
 
+bool Database::hasTable(const std::string& name) const {
+    return tables_.find(name) != tables_.end();
+}
 }  // namespace database
