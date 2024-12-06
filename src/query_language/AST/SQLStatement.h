@@ -3,28 +3,28 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 #include "../../types.h"
 
 namespace database {
-    class ColumnStatement {
-    public:
-        std::string name;
-        std::string table;
+class ColumnStatement {
+   public:
+    std::string name;
+    std::string table = "";
 
-        bool operator==(const ColumnStatement& other) const {
-            return (name == other.name && table == other.table);
-        }
-    };
-}
+    bool operator==(const ColumnStatement& other) const {
+        return (name == other.name && table == other.table);
+    }
+};
+}  // namespace database
 
-template<>
+template <>
 struct std::hash<database::ColumnStatement> {
-    std::size_t operator()(const database::ColumnStatement &k) const {
-        using std::size_t;
+    std::size_t operator()(const database::ColumnStatement& k) const {
         using std::hash;
+        using std::size_t;
         using std::string;
 
         return (hash<string>()(k.name) ^ (hash<string>()(k.table) << 1)) >> 1;

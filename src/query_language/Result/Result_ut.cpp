@@ -1,8 +1,9 @@
 #include <gtest/gtest.h>
-#include "Result.h"
+
 #include "../../database/Database/Database.h"
-#include "../Parser/Parser.h"
 #include "../Executor/Executor.h"
+#include "../Parser/Parser.h"
+#include "Result.h"
 using namespace database;
 
 class ResultTest : public ::testing::Test {
@@ -11,15 +12,12 @@ class ResultTest : public ::testing::Test {
     Executor executor{db};
 };
 
-TEST_F(ResultTest, Result1){
-    auto createStmt =
-        ("CREATE TABLE Test (ID INT, Name VARCHAR, Age INT);");
+TEST_F(ResultTest, Result1) {
+    auto createStmt = ("CREATE TABLE Test (ID INT, Name VARCHAR, Age INT);");
     executor.execute(createStmt);
 
-    auto insertStmt1 =
-        ("INSERT INTO Test VALUES (1, \"Alice\", 25);");
-    auto insertStmt2 =
-        ("INSERT INTO Test VALUES (2, \"Bob\", 30);");
+    auto insertStmt1 = ("INSERT INTO Test VALUES (1, \"Alice\", 25);");
+    auto insertStmt2 = ("INSERT INTO Test VALUES (2, \"Bob\", 30);");
     executor.execute(insertStmt1);
     executor.execute(insertStmt2);
 
@@ -33,6 +31,4 @@ TEST_F(ResultTest, Result1){
         }
         std::cout << std::endl;
     }
-    
-
 }
