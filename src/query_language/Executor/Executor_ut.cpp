@@ -31,8 +31,8 @@ TEST_F(ExecutorTest, ExecuteInsert) {
     auto insertStmt = "INSERT INTO Test VALUES (1, \"Alice\");";
     executor.execute(insertStmt);
 
-    const auto& table = db.getTable("Test");
-    const auto& data = table.get_rows();
+    auto& table = db.getTable("Test");
+    auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 1);
     EXPECT_EQ(std::get<int>(data[0][0]), 1);
     EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
@@ -48,8 +48,8 @@ TEST_F(ExecutorTest, ExecuteMultipleInserts) {
     auto insertStmt2 = "INSERT INTO Test VALUES (2, \"Bob\");";
     executor.execute(insertStmt2);
 
-    const auto& table = db.getTable("Test");
-    const auto& data = table.get_rows();
+    auto& table = db.getTable("Test");
+    auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 2);
     EXPECT_EQ(std::get<int>(data[0][0]), 1);
     EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
@@ -64,8 +64,8 @@ TEST_F(ExecutorTest, ExecuteInsertWithExpression) {
     auto insertStmt = "INSERT INTO Test VALUES (1, \"Alice\", 20 + 5);";
     executor.execute(insertStmt);
 
-    const auto& table = db.getTable("Test");
-    const auto& data = table.get_rows();
+    auto& table = db.getTable("Test");
+    auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 1);
     EXPECT_EQ(std::get<int>(data[0][0]), 1);
     EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
@@ -79,8 +79,8 @@ TEST_F(ExecutorTest, ExecuteInsertWithBoolean) {
     auto insertStmt = "INSERT INTO Test VALUES (1, \"Alice\", true);";
     executor.execute(insertStmt);
 
-    const auto& table = db.getTable("Test");
-    const auto& data = table.get_rows();
+    auto& table = db.getTable("Test");
+    auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 1);
     EXPECT_EQ(std::get<int>(data[0][0]), 1);
     EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
@@ -119,8 +119,8 @@ TEST_F(ExecutorTest, ExecuteComplexInsert) {
         "INSERT INTO Test VALUES (1, \"Alice\", 20 + 5, true && false);";
     executor.execute(insertStmt);
 
-    const auto& table = db.getTable("Test");
-    const auto& data = table.get_rows();
+    auto& table = db.getTable("Test");
+    auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 1);
     EXPECT_EQ(std::get<int>(data[0][0]), 1);
     EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
@@ -144,7 +144,7 @@ TEST_F(ExecutorTest, ComplexScenario) {
 
     executor.execute(createStmt);
 
-    const auto& table = db.getTable("Employees");
+    auto& table = db.getTable("Employees");
     EXPECT_EQ(table.get_name(), "Employees");
     ASSERT_EQ(table.get_scheme().size(), 9);
 
@@ -168,7 +168,7 @@ TEST_F(ExecutorTest, ComplexScenario) {
         executor.execute(stmt);
     }
 
-    const auto& data = table.get_rows();
+    auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 4);
 
     EXPECT_EQ(std::get<int>(data[0][0]), 1);
@@ -251,8 +251,8 @@ TEST_F(ExecutorTest, AutoIncrement) {
     auto insertStmt5 = "INSERT INTO Test VALUES (NULL, \"Eve\");";
     executor.execute(insertStmt5);
 
-    const auto& table = db.getTable("Test");
-    const auto& data = table.get_rows();
+    auto& table = db.getTable("Test");
+    auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 5);
     EXPECT_EQ(std::get<int>(data[0][0]), 0);
     EXPECT_EQ(std::get<int>(data[1][0]), 1);
@@ -281,8 +281,8 @@ TEST_F(ExecutorTest, MultipleAutoIncrement) {
     auto insertStmt3 = "INSERT INTO Test VALUES (NULL, NULL, \"Charlie\");";
     executor.execute(insertStmt3);
 
-    const auto& table = db.getTable("Test");
-    const auto& data = table.get_rows();
+    auto& table = db.getTable("Test");
+    auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 3);
     EXPECT_EQ(std::get<int>(data[0][0]), 0);
     EXPECT_EQ(std::get<int>(data[0][1]), 0);
@@ -323,8 +323,8 @@ TEST_F(ExecutorTest, ExecuteInsertWithAssignments) {
     EXPECT_TRUE(result1.is_ok());
 
     {
-        const auto& table = db.getTable("Test");
-        const auto data = table.get_rows();
+        auto& table = db.getTable("Test");
+        auto data = table.get_rows();
         ASSERT_EQ(data.size(), 1);
         EXPECT_EQ(std::get<int>(data[0][0]), 1);
         EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
@@ -339,8 +339,8 @@ TEST_F(ExecutorTest, ExecuteInsertWithAssignments) {
     EXPECT_TRUE(result2.is_ok());
 
     {
-        const auto& table = db.getTable("Test");
-        const auto data = table.get_rows();
+        auto& table = db.getTable("Test");
+        auto data = table.get_rows();
         ASSERT_EQ(data.size(), 2);
         EXPECT_EQ(std::get<int>(data[1][0]), 3);
         EXPECT_EQ(std::get<std::string>(data[1][1]), "Bob");
@@ -371,8 +371,8 @@ TEST_F(ExecutorTest, ExecuteInvalidInsertWithAssignments) {
     auto result4 = executor.execute(insertStmt4);
     EXPECT_FALSE(result4.is_ok());
 
-    const auto& table = db.getTable("Test");
-    const auto& data = table.get_rows();
+    auto& table = db.getTable("Test");
+    auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 0);
 }
 
@@ -390,8 +390,8 @@ TEST_F(ExecutorTest, ExecuteInsertWithPartialAssignments) {
     auto result = executor.execute(insertStmt);
     EXPECT_TRUE(result.is_ok());
 
-    const auto& table = db.getTable("Test");
-    const auto& data = table.get_rows();
+    auto& table = db.getTable("Test");
+    auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 1);
     EXPECT_EQ(std::get<int>(data[0][0]), 1);
     EXPECT_EQ(std::get<int>(data[0][2]), 25);
@@ -411,8 +411,8 @@ TEST_F(ExecutorTest, ExecuteInsertWithMixedSyntax) {
     auto result2 = executor.execute(insertStmt2);
     EXPECT_TRUE(result2.is_ok());
 
-    const auto& table = db.getTable("Test");
-    const auto& data = table.get_rows();
+    auto& table = db.getTable("Test");
+    auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 2);
 
     EXPECT_EQ(std::get<int>(data[0][0]), 1);
@@ -439,8 +439,8 @@ TEST_F(ExecutorTest, ExecuteInsertWithDefaults) {
     EXPECT_TRUE(result1.is_ok());
 
     {
-        const auto& table = db.getTable("Test");
-        const auto& data = table.get_rows();
+        auto& table = db.getTable("Test");
+        auto& data = table.get_rows();
         ASSERT_EQ(data.size(), 1);
         EXPECT_EQ(std::get<int>(data[0][0]), 1);
         EXPECT_EQ(std::get<std::string>(data[0][1]), "Unknown");
@@ -455,8 +455,8 @@ TEST_F(ExecutorTest, ExecuteInsertWithDefaults) {
     auto result2 = executor.execute(insertStmt2);
     EXPECT_TRUE(result2.is_ok());
     {
-        const auto& table = db.getTable("Test");
-        const auto& data = table.get_rows();
+        auto& table = db.getTable("Test");
+        auto& data = table.get_rows();
         ASSERT_EQ(data.size(), 2);
         EXPECT_EQ(std::get<int>(data[1][0]), 2);
         EXPECT_EQ(std::get<std::string>(data[1][1]), "John");
@@ -485,8 +485,8 @@ TEST_F(ExecutorTest, ComplexTableOperations) {
     EXPECT_TRUE(result.is_ok());
 
     {
-        const auto& table = db.getTable("Employees");
-        const auto data = table.get_rows();
+        auto& table = db.getTable("Employees");
+        auto data = table.get_rows();
         ASSERT_EQ(data.size(), 1);
         EXPECT_EQ(std::get<int>(data[0][0]), 0);
         EXPECT_EQ(std::get<int>(data[0][1]), 101);
@@ -522,8 +522,8 @@ TEST_F(ExecutorTest, ComplexTableOperations) {
     EXPECT_TRUE(result.is_ok());
 
     {
-        const auto& table = db.getTable("Employees");
-        const auto data = table.get_rows();
+        auto& table = db.getTable("Employees");
+        auto data = table.get_rows();
         ASSERT_EQ(data.size(), 3);
 
         EXPECT_EQ(std::get<int>(data[1][0]), 1);
@@ -555,8 +555,8 @@ TEST_F(ExecutorTest, ComplexTableOperations) {
     EXPECT_TRUE(result.is_ok());
 
     {
-        const auto& table = db.getTable("Employees");
-        const auto data = table.get_rows();
+        auto& table = db.getTable("Employees");
+        auto data = table.get_rows();
         ASSERT_EQ(data.size(), 4);
     }
 }
@@ -582,8 +582,8 @@ TEST_F(ExecutorTest, ComplexTableOperationsWithValues) {
     EXPECT_TRUE(result.is_ok());
 
     {
-        const auto& table = db.getTable("Employees");
-        const auto data = table.get_rows();
+        auto& table = db.getTable("Employees");
+        auto data = table.get_rows();
         ASSERT_EQ(data.size(), 1);
         EXPECT_EQ(std::get<int>(data[0][0]), 0);
         EXPECT_EQ(std::get<int>(data[0][1]), 101);
@@ -607,8 +607,8 @@ TEST_F(ExecutorTest, ComplexTableOperationsWithValues) {
     EXPECT_TRUE(result.is_ok());
 
     {
-        const auto& table = db.getTable("Employees");
-        const auto data = table.get_rows();
+        auto& table = db.getTable("Employees");
+        auto data = table.get_rows();
         ASSERT_EQ(data.size(), 3);
 
         EXPECT_EQ(std::get<int>(data[1][0]), 1);
@@ -641,8 +641,8 @@ TEST_F(ExecutorTest, ComplexTableOperationsWithValues) {
     EXPECT_TRUE(result.is_ok());
 
     {
-        const auto& table = db.getTable("Employees");
-        const auto data = table.get_rows();
+        auto& table = db.getTable("Employees");
+        auto data = table.get_rows();
         ASSERT_EQ(data.size(), 4);
         EXPECT_EQ(std::get<int>(data[3][0]), 100);
     }
@@ -664,8 +664,8 @@ TEST_F(ExecutorTest, ExecuteInsertWithEmptyValues) {
     EXPECT_TRUE(result1.is_ok());
 
     {
-        const auto& table = db.getTable("Test");
-        const auto data = table.get_rows();
+        auto& table = db.getTable("Test");
+        auto data = table.get_rows();
         ASSERT_EQ(data.size(), 1);
         EXPECT_EQ(std::get<int>(data[0][0]), 1);
         EXPECT_EQ(std::get<std::string>(data[0][1]), "Unknown");
@@ -679,8 +679,8 @@ TEST_F(ExecutorTest, ExecuteInsertWithEmptyValues) {
     EXPECT_FALSE(result2.is_ok());
 
     {
-        const auto& table = db.getTable("Test");
-        const auto data = table.get_rows();
+        auto& table = db.getTable("Test");
+        auto data = table.get_rows();
         ASSERT_EQ(data.size(), 1);
     }
 }
@@ -849,8 +849,8 @@ TEST_F(ExecutorTest, ExecuteDeleteAllRows) {
     auto result = executor.execute(deleteStmt);
     EXPECT_TRUE(result.is_ok());
 
-    const auto& table = db.getTable("Test");
-    const auto& data = table.get_rows();
+    auto& table = db.getTable("Test");
+    auto& data = table.get_rows();
     EXPECT_EQ(data.size(), 0);
 }
 
@@ -869,8 +869,8 @@ TEST_F(ExecutorTest, ExecuteDeleteWithPredicate) {
     auto result = executor.execute(deleteStmt);
     EXPECT_TRUE(result.is_ok());
 
-    const auto& table = db.getTable("Test");
-    const auto& data = table.get_rows();
+    auto& table = db.getTable("Test");
+    auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 1);
     EXPECT_EQ(std::get<std::string>(data[0][1]), "Bob");
 }
@@ -928,8 +928,8 @@ TEST_F(ExecutorTest, ComplexDatabaseOperations) {
     result = executor.execute(deleteStmt);
     EXPECT_TRUE(result.is_ok());
 
-    const auto& table = db.getTable("Employees");
-    const auto& data = table.get_rows();
+    auto& table = db.getTable("Employees");
+    auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 3);
 
     auto selectStmt = ("SELECT * FROM Employees;");

@@ -40,12 +40,13 @@ class Table {
             column_to_row_offset_[columns[i].name] = i;
         }
         row_sizes_.resize(columns.size());
-        // TODO Initialize row_sizes_
     }
+
+    std::vector<RowType> rows_;
 
     size_t size() const { return rows_.size(); }
 
-    std::vector<RowType> get_rows() const { return rows_; }
+    std::vector<RowType>& get_rows() { return rows_; }
 
     SchemeType get_scheme() const { return scheme_; }
 
@@ -90,7 +91,6 @@ class Table {
    private:
     std::string name_;
     SchemeType scheme_;
-    std::vector<RowType> rows_;
     std::vector<size_t> row_sizes_;
     std::map<std::string, size_t> column_to_row_offset_;
     std::vector<std::string> checkConditions_;

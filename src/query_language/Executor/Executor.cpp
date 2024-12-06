@@ -299,7 +299,11 @@ Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
                         }
 
                         if (!calculator::safeGet<bool>(calc.evaluate(
-                                selectStmt->joinPredicate, row_values)) ||
+                                selectStmt->joinPredicate, row_values))) {
+                            continue;
+                        }
+
+                        if (!selectStmt->predicate.empty() &&
                             !calculator::safeGet<bool>(calc.evaluate(
                                 selectStmt->predicate, row_values))) {
                             continue;
@@ -342,17 +346,33 @@ Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
         } else if (const auto *updateStmt =
                        dynamic_cast<const UpdateStatement *>(stmt.get())) {
             Table &table = m_database.getTable(updateStmt->tableName);
+            Table emptyTable = {};
+            Table &foreignTable =
+                updateStmt->foreignTableName.empty()
+                    ? emptyTable
+                    : m_database.getTable(updateStmt->foreignTableName);
 
             // check if columns are valid
             for (const auto &[columnData, value] : updateStmt->newValues) {
                 if (!table.get_column_to_row_offset().count(columnData.name)) {
-                    throw std::invalid_argument(
-                        "Invalid value name: " + columnData.name + ".");
+                    if (!updateStmt->foreignTableName.empty() ||
+                        !foreignTable.get_column_to_row_offset().count(
+                            columnData.name)) {
+                        throw std::invalid_argument(
+                            "Invalid value name: " + columnData.name + ".");
+                    }
                 }
 
                 auto column =
                     table.get_scheme()
                         [table.get_column_to_row_offset()[columnData.name]];
+                if (!updateStmt->foreignTableName.empty() &&
+                    columnData.table == updateStmt->foreignTableName) {
+                    column =
+                        foreignTable.get_scheme()
+                            [foreignTable
+                                 .get_column_to_row_offset()[columnData.name]];
+                }
 
                 if (column.isAutoIncrement) {
                     throw std::invalid_argument(
@@ -372,55 +392,114 @@ Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
                 }
             }
 
-            auto updater = [table, updateStmt, calc](std::vector<DBType> &row) {
-                std::unordered_map<std::string, std::string> row_values = {};
-                for (const auto &[name, index] :
-                     table.get_column_to_row_offset()) {
-                    row_values[name] = dBTypeToString(row[index]);
-                }
-
-                for (const auto &[columnItem, value] : updateStmt->newValues) {
-                    row[table.get_column_to_row_offset()[columnItem.name]] =
-                        calc.evaluate(value, row_values);
-                }
-            };
-
-            if (updateStmt->predicate.empty()) {
-                table.update_many(
-                    updater,
-                    []([[maybe_unused]] const std::vector<DBType> &row) {
-                        return true;
-                    });
-            } else {
-                auto filter_predicate = [table, updateStmt,
-                                         calc](const std::vector<DBType> &row) {
+            if (updateStmt->foreignTableName.empty()) {
+                // handle update without join
+                auto updater = [table, updateStmt,
+                                calc](std::vector<DBType> &row) {
                     std::unordered_map<std::string, std::string> row_values =
                         {};
                     for (const auto &[name, index] :
                          table.get_column_to_row_offset()) {
-                        auto value = row[index];
                         row_values[name] = dBTypeToString(row[index]);
                     }
-                    try {
-                        auto result = calculator::safeGet<bool>(
-                            calc.evaluate(updateStmt->predicate, row_values));
-                        return result;
-                    } catch (const std::exception &e) {
-                        throw;
+
+                    for (const auto &[columnItem, value] :
+                         updateStmt->newValues) {
+                        row[table.get_column_to_row_offset()[columnItem.name]] =
+                            calc.evaluate(value, row_values);
                     }
                 };
 
-                table.update_many(updater, filter_predicate);
-            }
-        } else if (const auto *insertStmt =
-                       dynamic_cast<const DeleteStatement *>(stmt.get())) {
-            Table &table = m_database.getTable(insertStmt->tableName);
+                if (updateStmt->predicate.empty()) {
+                    table.update_many(
+                        updater,
+                        []([[maybe_unused]] const std::vector<DBType> &row) {
+                            return true;
+                        });
+                } else {
+                    auto filter_predicate =
+                        [table, updateStmt,
+                         calc](const std::vector<DBType> &row) {
+                            std::unordered_map<std::string, std::string>
+                                row_values = {};
+                            for (const auto &[name, index] :
+                                 table.get_column_to_row_offset()) {
+                                auto value = row[index];
+                                row_values[name] = dBTypeToString(row[index]);
+                            }
+                            try {
+                                auto result =
+                                    calculator::safeGet<bool>(calc.evaluate(
+                                        updateStmt->predicate, row_values));
+                                return result;
+                            } catch (const std::exception &e) {
+                                throw;
+                            }
+                        };
 
-            if (insertStmt->predicate.empty()) {
+                    table.update_many(updater, filter_predicate);
+                }
+            } else {
+                // handle update with join
+
+                auto &rows = table.get_rows();
+
+                auto &foreignRows = foreignTable.get_rows();
+
+                for (auto &column : rows) {
+                    for (auto &foreignColumn : foreignRows) {
+                        std::unordered_map<std::string, std::string>
+                            row_values = {};
+
+                        for (const auto &[name, index] :
+                             table.get_column_to_row_offset()) {
+                            row_values[updateStmt->tableName + '.' + name] =
+                                dBTypeToString(column[index]);
+                        }
+                        for (const auto &[name, index] :
+                             foreignTable.get_column_to_row_offset()) {
+                            row_values[updateStmt->foreignTableName + '.' +
+                                       name] =
+                                dBTypeToString(foreignColumn[index]);
+                        }
+
+                        if (!calculator::safeGet<bool>(calc.evaluate(
+                                updateStmt->joinPredicate, row_values))) {
+                            continue;
+                        }
+
+                        if (!updateStmt->predicate.empty() &&
+                            !calculator::safeGet<bool>(calc.evaluate(
+                                updateStmt->predicate, row_values))) {
+                            continue;
+                        }
+
+                        for (auto [key, value] : updateStmt->newValues) {
+                            if (key.table == updateStmt->tableName) {
+                                column[table.get_column_to_row_offset()
+                                           [key.name]] =
+                                    calc.evaluate(value, row_values);
+                            } else {
+                                foreignColumn[foreignTable
+                                                  .get_column_to_row_offset()
+                                                      [key.name]] =
+                                    calc.evaluate(value, row_values);
+                            }
+                        }
+                    }
+
+                    // table.update_many(updater, filter_predicate);
+                }
+            }
+        } else if (const auto *deleteStmt =
+                       dynamic_cast<const DeleteStatement *>(stmt.get())) {
+            Table &table = m_database.getTable(deleteStmt->tableName);
+
+            if (deleteStmt->predicate.empty()) {
                 table.drop_rows();
             } else {
                 // build the predicate
-                auto filter_predicate = [table, insertStmt,
+                auto filter_predicate = [table, deleteStmt,
                                          calc](const std::vector<DBType> &row) {
                     std::unordered_map<std::string, std::string> row_values =
                         {};
@@ -429,7 +508,7 @@ Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
                         row_values[name] = dBTypeToString(row[index]);
                     }
                     return calculator::safeGet<bool>(
-                        calc.evaluate(insertStmt->predicate, row_values));
+                        calc.evaluate(deleteStmt->predicate, row_values));
                 };
 
                 table.remove_many(filter_predicate);

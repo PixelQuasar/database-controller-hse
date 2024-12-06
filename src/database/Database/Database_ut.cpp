@@ -10,7 +10,8 @@ class DatabaseTest : public ::testing::Test {
 };
 
 TEST_F(DatabaseTest, CreateTable) {
-    db.createTable("Test", {{"ID", DataTypeName::INT}, {"Name", DataTypeName::STRING}});
+    db.createTable("Test",
+                   {{"ID", DataTypeName::INT}, {"Name", DataTypeName::STRING}});
     const auto& table = db.getTable("Test");
     EXPECT_EQ(table.get_name(), "Test");
     ASSERT_EQ(table.get_scheme().size(), 2);
@@ -19,10 +20,11 @@ TEST_F(DatabaseTest, CreateTable) {
 }
 
 TEST_F(DatabaseTest, InsertIntoTable) {
-    db.createTable("Test", {{"ID", DataTypeName::INT}, {"Name", DataTypeName::STRING}});
+    db.createTable("Test",
+                   {{"ID", DataTypeName::INT}, {"Name", DataTypeName::STRING}});
     db.insertInto("Test", {1, "Alice"});
-    const auto& table = db.getTable("Test");
-    const auto& data = table.get_rows();
+    auto& table = db.getTable("Test");
+    auto& data = table.get_rows();
     ASSERT_EQ(data.size(), 1);
     EXPECT_EQ(std::get<int>(data[0][0]), 1);
     EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
