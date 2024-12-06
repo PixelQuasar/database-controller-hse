@@ -1,8 +1,10 @@
+#include <chrono>
 #include <gtest/gtest.h>
 
 #include "../../database/Database/Database.h"
 #include "../Parser/Parser.h"
 #include "Executor.h"
+#include "../AST/SQLStatement.h"
 
 using namespace database;
 
@@ -963,6 +965,148 @@ TEST_F(ExecutorTest, ComplexDatabaseOperations) {
     EXPECT_EQ(std::get<int>(data[2][4]), 30);
     EXPECT_EQ(std::get<double>(data[2][5]), 3500.0);
     EXPECT_EQ(std::get<bool>(data[2][6]), false);
+}
+
+TEST_F(ExecutorTest, ExecuteCreateOrderedIndex) {
+    auto createTableStmt = "CREATE TABLE Users (ID INT, Login VARCHAR, IsAdmin BOOL);";
+    executor.execute(createTableStmt);
+
+    auto createIndexStmt = "CREATE ORDERED INDEX ON Users BY Login;";
+    auto result = executor.execute(createIndexStmt);
+    EXPECT_TRUE(result.is_ok());
+
+    const auto& table = db.getTable("Users");
+    ASSERT_EQ(table.getIndexes().size(), 1);
+    EXPECT_EQ(table.getIndexes().at("Login,").type, IndexType::ORDERED);
+}
+
+TEST_F(ExecutorTest, ExecuteCreateUnorderedIndex) {
+    auto createTableStmt = "CREATE TABLE Users (ID INT, Login VARCHAR, IsAdmin BOOL);";
+    executor.execute(createTableStmt);
+
+    auto createIndexStmt = "CREATE UNORDERED INDEX ON Users BY ID, Login;";
+    auto result = executor.execute(createIndexStmt);
+    EXPECT_TRUE(result.is_ok());
+
+    const auto& table = db.getTable("Users");
+    ASSERT_EQ(table.getIndexes().size(), 1);
+    EXPECT_EQ(table.getIndexes().at("ID,Login,").type, IndexType::UNORDERED);
+}
+
+TEST_F(ExecutorTest, ExecuteCreateIndexOnNonExistentTable) {
+    auto createIndexStmt = "CREATE ORDERED INDEX ON NonExistent BY Login;";
+    auto result = executor.execute(createIndexStmt);
+    EXPECT_FALSE(result.is_ok());
+}
+
+TEST_F(ExecutorTest, ExecuteCreateIndexOnNonExistentColumn) {
+    auto createTableStmt = "CREATE TABLE Users (ID INT, Login VARCHAR);";
+    executor.execute(createTableStmt);
+
+    auto createIndexStmt = "CREATE UNORDERED INDEX ON Users BY IsAdmin;";
+    auto result = executor.execute(createIndexStmt);
+    EXPECT_FALSE(result.is_ok());
+}
+
+TEST_F(ExecutorTest, ExecuteCreateIndexWithInvalidType) {
+    auto createTableStmt = "CREATE TABLE Users (ID INT, Login VARCHAR);";
+    executor.execute(createTableStmt);
+
+    auto createIndexStmt = "CREATE INVALIDTYPE INDEX ON Users BY Login;";
+    auto result = executor.execute(createIndexStmt);
+    EXPECT_FALSE(result.is_ok());
+}
+
+TEST_F(ExecutorTest, QueryPerformanceWithIndex) {
+    auto createTableStmt = "CREATE TABLE Users (ID INT, Login VARCHAR, IsAdmin BOOL);";
+    executor.execute(createTableStmt);
+
+    for (int i = 0; i < 10000; ++i) {
+        std::string insertStmt = "INSERT INTO Users VALUES (" + std::to_string(i) + ", 'user" + std::to_string(i) + "', " + (i % 2 == 0 ? "true" : "false") + ");";
+        executor.execute(insertStmt);
+    }
+
+    auto start = std::chrono::high_resolution_clock::now();
+    auto result = executor.execute("SELECT * FROM Users WHERE ID > 5000 AND ID < 6000;");
+    auto end = std::chrono::high_resolution_clock::now();
+    auto durationWithoutIndex = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+    executor.execute("CREATE ORDERED INDEX ON Users BY ID;");
+
+    start = std::chrono::high_resolution_clock::now();
+    result = executor.execute("SELECT * FROM Users WHERE ID > 5000 AND ID < 6000;");
+    end = std::chrono::high_resolution_clock::now();
+    auto durationWithIndex = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    EXPECT_LT(durationWithIndex, durationWithoutIndex);
+    std::cout << "Duration without index: " << durationWithoutIndex << " microseconds" << std::endl;
+    std::cout << "Duration with index: " << durationWithIndex << " microseconds" << std::endl;
+}
+
+TEST_F(ExecutorTest, ComplexQueryWithMultipleIndexes) {
+    auto createTableStmt =
+        "CREATE TABLE Employees ("
+        "ID INT, "
+        "EmpCode INT, "
+        "FirstName VARCHAR, "
+        "LastName VARCHAR, "
+        "Age INT, "
+        "Salary DOUBLE, "
+        "Department VARCHAR, "
+        "Position VARCHAR, "
+        "IsActive BOOL);";
+    executor.execute(createTableStmt);
+
+    for (int i = 0; i < 500000; ++i) {
+        std::string insertStmt = "INSERT INTO Employees VALUES (" +
+                                 std::to_string(i) + ", " +
+                                 std::to_string(1000 + i) + ", 'First" +
+                                 std::to_string(i) + "', 'Last" +
+                                 std::to_string(i) + "', " +
+                                 std::to_string(20 + (i % 30)) + ", " +
+                                 std::to_string(3000.0 + (i % 1000)) + ", " +
+                                 "'Dept" + std::to_string(i % 5) + "', " +
+                                 "'Pos" + std::to_string(i % 10) + "', " +
+                                 (i % 2 == 0 ? "true" : "false") + ");";
+        executor.execute(insertStmt);
+    }
+    auto start = std::chrono::high_resolution_clock::now();
+    auto result = executor.execute(
+        "SELECT * FROM Employees WHERE "
+        "(Age > 25 AND Salary < 3500) OR "
+        "(Department = 'Dept1' AND Position = 'Pos2') OR "
+        "(IsActive = true AND EmpCode % 2 = 0);");
+    auto end = std::chrono::high_resolution_clock::now();
+    auto durationWithoutIndex = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+    executor.execute("CREATE ORDERED INDEX ON Employees BY EmpCode;");
+    executor.execute("CREATE ORDERED INDEX ON Employees BY LastName;");
+    executor.execute("CREATE ORDERED INDEX ON Employees BY Age;");
+    executor.execute("CREATE ORDERED INDEX ON Employees BY Salary;");
+    executor.execute("CREATE UNORDERED INDEX ON Employees BY Department;");
+    executor.execute("CREATE UNORDERED INDEX ON Employees BY Position;");
+    executor.execute("CREATE UNORDERED INDEX ON Employees BY IsActive;");
+
+    start = std::chrono::high_resolution_clock::now();
+    result = executor.execute(
+        "SELECT * FROM Employees WHERE "
+        "(Age > 25 AND Salary < 3500) OR "
+        "(Department = 'Dept1' AND Position = 'Pos2') OR "
+        "(IsActive = true AND EmpCode % 2 = 0);");
+    end = std::chrono::high_resolution_clock::now();
+    auto durationWithIndex = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+    std::cout << "Duration with multiple indexes: " << durationWithIndex << " microseconds" << std::endl;
+    std::cout << "Duration without index: " << durationWithoutIndex << " microseconds" << std::endl;
+
+    EXPECT_LT(durationWithIndex, durationWithoutIndex);
+
+    auto rows = result.get_payload();
+    for (const auto& row : rows) {
+        bool condition1 = (std::get<int>(row.at("Age")) > 25 && std::get<double>(row.at("Salary")) < 3500);
+        bool condition2 = (std::get<std::string>(row.at("Department")) == "Dept1" && std::get<std::string>(row.at("Position")) == "Pos2");
+        bool condition3 = (std::get<bool>(row.at("IsActive")) == true && std::get<int>(row.at("EmpCode")) % 2 == 0);
+        EXPECT_TRUE(condition1 || condition2 || condition3);
+    }
 }
 
 int main(int argc, char** argv) {

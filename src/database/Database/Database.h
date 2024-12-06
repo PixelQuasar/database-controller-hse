@@ -19,7 +19,7 @@ class Database {
     void insertInto(const std::string& tableName, const RowType& values);
     Table& getTable(const std::string& name);
     bool hasTable(const std::string& name) const;
-
+    void createIndex(const std::string& tableName, const std::string& indexType, const std::vector<std::string>& columns);
    private:
     std::unordered_map<std::string, Table> tables_;
 };

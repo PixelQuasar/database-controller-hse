@@ -12,6 +12,7 @@
 #include <vector>
 #include <sstream>
 #include <memory>
+#include <iostream>
 
 #include "../../Calculator/Calculator.h"
 
@@ -113,7 +114,7 @@ void Table::load_from_byte_buffer(const std::string& buffer) {
 std::vector<RowType> Table::filter(
     const std::function<bool(const RowType&)>& predicate) {
     std::vector<RowType> result;
-    for (auto& row : rows_) {
+    for (const auto& row : rows_) {
         if (predicate(row)) {
             result.push_back(row);
         }
@@ -194,11 +195,12 @@ void Table::insert_row(RowType row) {
         }
 
         if (scheme_[i].isKey) {
-            if (indexes_[scheme_[i].name].count(row[i])) {
+            auto& index = indexes_[scheme_[i].name];
+            if (index.orderedIndex.count(dBTypeToString(row[i]))) {
                 throw std::runtime_error(
                     "Key constraint violated for column: " + scheme_[i].name);
             }
-            indexes_[scheme_[i].name].insert(row[i]);
+            index.orderedIndex.emplace(dBTypeToString(row[i]), rows_.size());
         }
     }
 
@@ -223,6 +225,62 @@ void Table::addAutoIncrement(const std::string& columnName) {
 void Table::addKeyConstraint(const std::string& columnName) {
     addUniqueConstraint(columnName);
     indexes_[columnName] = {};
+}
+
+void Table::createIndex(const std::string& indexTypeStr, const std::vector<std::string>& columns) {
+    if (columns.empty()) {
+        throw std::runtime_error("Необходимо указать хотя бы одну колонку для индекса.");
+    }
+
+    for (const auto& col : columns) {
+        if (column_to_row_offset_.find(col) == column_to_row_offset_.end()) {
+            throw std::runtime_error("Колонка не существует: " + col);
+        }
+    }
+
+    IndexType indexType;
+    if (indexTypeStr == "ordered") {
+        indexType = IndexType::ORDERED;
+    } else if (indexTypeStr == "unordered") {
+        indexType = IndexType::UNORDERED;
+    } else {
+        throw std::runtime_error("Неизвестный тип индекса: " + indexTypeStr);
+    }
+
+    Index index;
+    index.type = indexType;
+    index.columns = columns;
+
+    for (size_t row = 0; row < rows_.size(); ++row) {
+        if (index.type == IndexType::ORDERED) {
+            std::string key = dBTypeToString(rows_[row][column_to_row_offset_[columns[0]]]);
+            index.orderedIndex.emplace(key, row);
+        } else if (index.type == IndexType::UNORDERED) {
+            std::string key;
+            for (const auto& col : columns) {
+                key += dBTypeToString(rows_[row][column_to_row_offset_[col]]) + "|";
+            }
+            index.unorderedIndex[key].insert(row);
+        }
+    }
+
+    indexes_.emplace(columnsToKey(columns), index);
+}
+
+std::string Table::columnsToKey(const std::vector<std::string>& columns) const {
+    std::string key;
+    for (const auto& col : columns) {
+        key += col + ",";
+    }
+    return key;
+}
+
+bool Table::useIndexForQuery(const std::string& columnName) {
+    if (indexes_.find(columnName) != indexes_.end()) {
+        std::cout << "Using index for column: " << columnName << std::endl;
+        return true;
+    }
+    return false;
 }
 
 }  // namespace database

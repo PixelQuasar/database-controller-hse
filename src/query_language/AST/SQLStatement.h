@@ -18,7 +18,7 @@ class ColumnStatement {
         return (name == other.name && table == other.table);
     }
 };
-}  // namespace database
+}
 
 template <>
 struct std::hash<database::ColumnStatement> {
@@ -30,6 +30,8 @@ struct std::hash<database::ColumnStatement> {
         return (hash<string>()(k.name) ^ (hash<string>()(k.table) << 1)) >> 1;
     }
 };
+
+namespace database {
 
 enum class IndexType {
     ORDERED,
@@ -115,7 +117,7 @@ class SelectStatement : public SQLStatement {
 class UpdateStatement : public SQLStatement {
    public:
     std::string tableName;
-    std::unordered_map<ColumnStatement, std::string> newValues;
+    std::unordered_map<database::ColumnStatement, std::string> newValues;
 
     // WHERE properties
     std::string predicate;

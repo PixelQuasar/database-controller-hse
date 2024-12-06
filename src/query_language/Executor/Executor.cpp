@@ -434,6 +434,11 @@ Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
 
                 table.remove_many(filter_predicate);
             }
+        } else if (const auto *createIndexStmt =
+                    dynamic_cast<const CreateIndexStatement *>(stmt.get())) {
+            Table &table = m_database.getTable(createIndexStmt->tableName);
+            std::string indexTypeStr = (createIndexStmt->indexType == IndexType::ORDERED) ? "ordered" : "unordered";
+            table.createIndex(indexTypeStr, createIndexStmt->columns);
         } else {
             throw std::runtime_error("Unsupported SQL statement.");
         }
@@ -444,8 +449,12 @@ Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
 }
 
 Result Executor::execute(const std::string &sql) {
-    std::shared_ptr<SQLStatement> stmt = Parser::parse(sql);
-    return Executor::execute(stmt);
+    try {
+        std::shared_ptr<SQLStatement> stmt = Parser::parse(sql);
+        return Executor::execute(stmt);
+    } catch (const std::exception &e) {
+        return Result::errorResult(std::string(e.what()));
+    }
 }
 
 }  // namespace database
