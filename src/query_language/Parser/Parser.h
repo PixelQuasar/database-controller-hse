@@ -5,6 +5,8 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "../AST/SQLStatement.h"
 
@@ -22,6 +24,7 @@ class Parser {
     std::shared_ptr<SelectStatement> parseSelect();
     std::shared_ptr<UpdateStatement> parseUpdate();
     std::shared_ptr<DeleteStatement> parseDelete();
+    std::shared_ptr<CreateIndexStatement> parseCreateIndex(IndexType indexType);
     std::unordered_map<std::string, std::string> parseAssignValues();
 
     void skipWhitespace();

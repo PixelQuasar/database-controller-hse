@@ -3,6 +3,9 @@
 //
 
 #include "Database.h"
+#include "../Table/Table.h"
+
+#include <stdexcept>
 
 namespace database {
 
@@ -38,4 +41,15 @@ Table& Database::getTable(const std::string& name) {
     return it->second;
 }
 
+bool Database::hasTable(const std::string& name) const {
+    return tables_.find(name) != tables_.end();
+}
+
+void Database::createIndex(const std::string& tableName, const std::string& indexType, const std::vector<std::string>& columns) {
+    auto it = tables_.find(tableName);
+    if (it == tables_.end()) {
+        throw std::runtime_error("Таблица не существует: " + tableName);
+    }
+    it->second.createIndex(indexType, columns);
+}
 }  // namespace database

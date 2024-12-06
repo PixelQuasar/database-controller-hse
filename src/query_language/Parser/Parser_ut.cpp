@@ -74,7 +74,7 @@ TEST_F(ParserTest, ComplexParsingScenario) {
             {"FirstName", DataTypeName::STRING},
             {"LastName", DataTypeName::STRING},
             {"Age", DataTypeName::INT},
-            {"Salary", DataTypeName::DOUBLE },
+            {"Salary", DataTypeName::DOUBLE},
             {"IsManager", DataTypeName::BOOL},
             {"IsFullTime", DataTypeName::BOOL},
             {"YearsOfService", DataTypeName::DOUBLE},
@@ -384,8 +384,8 @@ TEST_F(ParserTest, ParseSelect) {
     auto selectStmt = dynamic_cast<SelectStatement*>(stmt.get());
     ASSERT_NE(selectStmt, nullptr);
     EXPECT_EQ(selectStmt->tableName, "Test");
-    ASSERT_EQ(selectStmt->columnNames.size(), 1);
-    EXPECT_EQ(selectStmt->columnNames[0], "*");
+    ASSERT_EQ(selectStmt->columnData.size(), 1);
+    EXPECT_EQ(selectStmt->columnData[0].name, "*");
     EXPECT_TRUE(selectStmt->predicate.empty());
 }
 
@@ -394,9 +394,9 @@ TEST_F(ParserTest, ParseSelectWithColumns) {
     auto selectStmt = dynamic_cast<SelectStatement*>(stmt.get());
     ASSERT_NE(selectStmt, nullptr);
     EXPECT_EQ(selectStmt->tableName, "Test");
-    ASSERT_EQ(selectStmt->columnNames.size(), 2);
-    EXPECT_EQ(selectStmt->columnNames[0], "ID");
-    EXPECT_EQ(selectStmt->columnNames[1], "Name");
+    ASSERT_EQ(selectStmt->columnData.size(), 2);
+    EXPECT_EQ(selectStmt->columnData[0].name, "ID");
+    EXPECT_EQ(selectStmt->columnData[1].name, "Name");
     EXPECT_TRUE(selectStmt->predicate.empty());
 }
 
@@ -405,8 +405,8 @@ TEST_F(ParserTest, ParseSelectWithPredicate) {
     auto selectStmt = dynamic_cast<SelectStatement*>(stmt.get());
     ASSERT_NE(selectStmt, nullptr);
     EXPECT_EQ(selectStmt->tableName, "Test");
-    ASSERT_EQ(selectStmt->columnNames.size(), 1);
-    EXPECT_EQ(selectStmt->columnNames[0], "*");
+    ASSERT_EQ(selectStmt->columnData.size(), 1);
+    EXPECT_EQ(selectStmt->columnData[0].name, "*");
     EXPECT_EQ(selectStmt->predicate, "ID == 1");
 }
 
@@ -416,8 +416,8 @@ TEST_F(ParserTest, ParseSelectWithComplexPredicate) {
     auto selectStmt = dynamic_cast<SelectStatement*>(stmt.get());
     ASSERT_NE(selectStmt, nullptr);
     EXPECT_EQ(selectStmt->tableName, "Test");
-    ASSERT_EQ(selectStmt->columnNames.size(), 1);
-    EXPECT_EQ(selectStmt->columnNames[0], "*");
+    ASSERT_EQ(selectStmt->columnData.size(), 1);
+    EXPECT_EQ(selectStmt->columnData[0].name, "*");
     EXPECT_EQ(selectStmt->predicate, "(ID == 1) && (Name == \"Alice\")");
 }
 
@@ -428,8 +428,8 @@ TEST_F(ParserTest, ParseUpdate) {
     ASSERT_NE(updateStmt, nullptr);
     EXPECT_EQ(updateStmt->tableName, "Test");
     ASSERT_EQ(updateStmt->newValues.size(), 2);
-    EXPECT_EQ(updateStmt->newValues["ID"], "1");
-    EXPECT_EQ(updateStmt->newValues["Name"], "\"Alice\"");
+    EXPECT_EQ(updateStmt->newValues[{"ID"}], "1");
+    EXPECT_EQ(updateStmt->newValues[{"Name"}], "\"Alice\"");
     EXPECT_EQ(updateStmt->predicate, "ID == 2");
 }
 
@@ -441,8 +441,8 @@ TEST_F(ParserTest, ParseUpdateWithComplexExpressions) {
     ASSERT_NE(updateStmt, nullptr);
     EXPECT_EQ(updateStmt->tableName, "Test");
     ASSERT_EQ(updateStmt->newValues.size(), 2);
-    EXPECT_EQ(updateStmt->newValues["ID"], "1 + 2 * 3");
-    EXPECT_EQ(updateStmt->newValues["Name"], "\"Alice\" + \"Smith\"");
+    EXPECT_EQ(updateStmt->newValues[{"ID"}], "1 + 2 * 3");
+    EXPECT_EQ(updateStmt->newValues[{"Name"}], "\"Alice\" + \"Smith\"");
     EXPECT_EQ(updateStmt->predicate, "ID == 2");
 }
 
@@ -454,8 +454,8 @@ TEST_F(ParserTest, ParseUpdateWithWhitespace) {
     ASSERT_NE(updateStmt, nullptr);
     EXPECT_EQ(updateStmt->tableName, "Test");
     ASSERT_EQ(updateStmt->newValues.size(), 2);
-    EXPECT_EQ(updateStmt->newValues["ID"], "1");
-    EXPECT_EQ(updateStmt->newValues["Name"], "\"Alice\"");
+    EXPECT_EQ(updateStmt->newValues[{"ID"}], "1");
+    EXPECT_EQ(updateStmt->newValues[{"Name"}], "\"Alice\"");
     EXPECT_EQ(updateStmt->predicate, "ID == 2");
 }
 
@@ -469,8 +469,8 @@ TEST_F(ParserTest, ParseUpdateWithNewlines) {
     ASSERT_NE(updateStmt, nullptr);
     EXPECT_EQ(updateStmt->tableName, "Test");
     ASSERT_EQ(updateStmt->newValues.size(), 2);
-    EXPECT_EQ(updateStmt->newValues["ID"], "1");
-    EXPECT_EQ(updateStmt->newValues["Name"], "\"Alice\"");
+    EXPECT_EQ(updateStmt->newValues[{"ID"}], "1");
+    EXPECT_EQ(updateStmt->newValues[{"Name"}], "\"Alice\"");
     EXPECT_EQ(updateStmt->predicate, "ID == 2");
 }
 
@@ -507,4 +507,105 @@ TEST_F(ParserTest, ParseDeleteWithNewlines) {
     ASSERT_NE(deleteStmt, nullptr);
     EXPECT_EQ(deleteStmt->tableName, "Test");
     EXPECT_EQ(deleteStmt->predicate, "ID == 1");
+}
+
+TEST_F(ParserTest, ParseCreateIndexOrdered) {
+    std::string sql = "CREATE ORDERED INDEX ON users BY login;";
+    auto stmt = Parser::parse(sql);
+    auto createIndexStmt = std::dynamic_pointer_cast<CreateIndexStatement>(stmt);
+    ASSERT_NE(createIndexStmt, nullptr);
+    EXPECT_EQ(createIndexStmt->indexType, IndexType::ORDERED);
+    EXPECT_EQ(createIndexStmt->tableName, "users");
+    ASSERT_EQ(createIndexStmt->columns.size(), 1);
+    EXPECT_EQ(createIndexStmt->columns[0], "login");
+}
+
+TEST_F(ParserTest, ParseCreateIndexUnordered) {
+    std::string sql = "CREATE UNORDERED INDEX ON users BY is_admin;";
+    auto stmt = Parser::parse(sql);
+    auto createIndexStmt = std::dynamic_pointer_cast<CreateIndexStatement>(stmt);
+    ASSERT_NE(createIndexStmt, nullptr);
+    EXPECT_EQ(createIndexStmt->indexType, IndexType::UNORDERED);
+    EXPECT_EQ(createIndexStmt->tableName, "users");
+    ASSERT_EQ(createIndexStmt->columns.size(), 1);
+    EXPECT_EQ(createIndexStmt->columns[0], "is_admin");
+}
+
+TEST_F(ParserTest, ParseCreateIndexMultipleColumns) {
+    std::string sql = "CREATE UNORDERED INDEX ON employees BY first_name, last_name;";
+    auto stmt = Parser::parse(sql);
+    auto createIndexStmt = std::dynamic_pointer_cast<CreateIndexStatement>(stmt);
+    ASSERT_NE(createIndexStmt, nullptr);
+    EXPECT_EQ(createIndexStmt->indexType, IndexType::UNORDERED);
+    EXPECT_EQ(createIndexStmt->tableName, "employees");
+    ASSERT_EQ(createIndexStmt->columns.size(), 2);
+    EXPECT_EQ(createIndexStmt->columns[0], "first_name");
+    EXPECT_EQ(createIndexStmt->columns[1], "last_name");
+}
+
+TEST_F(ParserTest, ParseCreateIndexWithWhitespace) {
+    std::string sql = "CREATE   ORDERED   INDEX   ON   users   BY   login   ;";
+    auto stmt = Parser::parse(sql);
+    auto createIndexStmt = std::dynamic_pointer_cast<CreateIndexStatement>(stmt);
+    ASSERT_NE(createIndexStmt, nullptr);
+    EXPECT_EQ(createIndexStmt->indexType, IndexType::ORDERED);
+    EXPECT_EQ(createIndexStmt->tableName, "users");
+    ASSERT_EQ(createIndexStmt->columns.size(), 1);
+    EXPECT_EQ(createIndexStmt->columns[0], "login");
+}
+
+TEST_F(ParserTest, ParseCreateIndexMissingSemicolon) {
+    std::string sql = "CREATE ORDERED INDEX ON users BY login";
+    EXPECT_THROW(Parser::parse(sql), std::runtime_error);
+}
+
+TEST_F(ParserTest, ParseCreateIndexInvalidType) {
+    std::string sql = "CREATE NON_EXISTENT INDEX ON users BY login;";
+    EXPECT_THROW(Parser::parse(sql), std::runtime_error);
+}
+
+TEST_F(ParserTest, ParseCreateIndexMissingBy) {
+    std::string sql = "CREATE ORDERED INDEX ON users login;";
+    EXPECT_THROW(Parser::parse(sql), std::runtime_error);
+}
+
+TEST_F(ParserTest, ParseCreateIndexEmptyColumns) {
+    std::string sql = "CREATE UNORDERED INDEX ON users BY ();";
+    EXPECT_THROW(Parser::parse(sql), std::runtime_error);
+}
+
+TEST_F(ParserTest, ParseCreateIndexExtraComma) {
+    std::string sql = "CREATE ORDERED INDEX ON users BY login, ;";
+    EXPECT_THROW(Parser::parse(sql), std::runtime_error);
+}
+
+TEST_F(ParserTest, ParseCreateIndexNoColumns) {
+    std::string sql = "CREATE UNORDERED INDEX ON users BY;";
+    EXPECT_THROW(Parser::parse(sql), std::runtime_error);
+}
+
+TEST_F(ParserTest, ParseCreateIndexOrderedMultipleColumns) {
+    std::string sql = "CREATE ORDERED INDEX ON users BY login, email, created_at;";
+    auto stmt = Parser::parse(sql);
+    auto createIndexStmt = std::dynamic_pointer_cast<CreateIndexStatement>(stmt);
+    ASSERT_NE(createIndexStmt, nullptr);
+    EXPECT_EQ(createIndexStmt->indexType, IndexType::ORDERED);
+    EXPECT_EQ(createIndexStmt->tableName, "users");
+    ASSERT_EQ(createIndexStmt->columns.size(), 3);
+    EXPECT_EQ(createIndexStmt->columns[0], "login");
+    EXPECT_EQ(createIndexStmt->columns[1], "email");
+    EXPECT_EQ(createIndexStmt->columns[2], "created_at");
+}
+
+TEST_F(ParserTest, ParseCreateIndexUnorderedMultipleColumns) {
+    std::string sql = "CREATE UNORDERED INDEX ON employees BY first_name, last_name, department;";
+    auto stmt = Parser::parse(sql);
+    auto createIndexStmt = std::dynamic_pointer_cast<CreateIndexStatement>(stmt);
+    ASSERT_NE(createIndexStmt, nullptr);
+    EXPECT_EQ(createIndexStmt->indexType, IndexType::UNORDERED);
+    EXPECT_EQ(createIndexStmt->tableName, "employees");
+    ASSERT_EQ(createIndexStmt->columns.size(), 3);
+    EXPECT_EQ(createIndexStmt->columns[0], "first_name");
+    EXPECT_EQ(createIndexStmt->columns[1], "last_name");
+    EXPECT_EQ(createIndexStmt->columns[2], "department");
 }

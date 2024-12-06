@@ -12,11 +12,24 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <unordered_set>
+#include <variant>
 
 #include "../../query_language/AST/SQLStatement.h"
 #include "../../types.h"
 
 namespace database {
+
+struct Index {
+    IndexType type;
+    std::vector<std::string> columns;
+
+    std::multimap<std::string, size_t> orderedIndex;
+
+    std::unordered_map<std::string, std::unordered_set<size_t>> unorderedIndex;
+};
+
 class Table {
    public:
     Table() {}
@@ -64,6 +77,16 @@ class Table {
 
     void load_from_byte_buffer(const std::string& buffer);
 
+    void createIndex(const std::string& indexTypeStr, const std::vector<std::string>& columns);
+
+    std::string columnsToKey(const std::vector<std::string>& columns) const;
+
+    bool useIndexForQuery(const std::string& columnName);
+
+    const std::unordered_map<std::string, Index>& getIndexes() const {
+        return indexes_;
+    }
+
    private:
     std::string name_;
     SchemeType scheme_;
@@ -72,7 +95,7 @@ class Table {
     std::map<std::string, size_t> column_to_row_offset_;
     std::vector<std::string> checkConditions_;
     std::map<std::string, int> autoIncrementValues_;
-    std::map<std::string, std::set<DBType>> indexes_;
+    std::unordered_map<std::string, Index> indexes_;
 };
 
 }  // namespace database
