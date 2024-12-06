@@ -46,6 +46,7 @@ struct ColumnDefinition {
             case BYTEBUFFER:
                 return "BYTEBUFFER";
         }
+	return "UNKNOWN";
     }
 
     static DataTypeName stringToDataTypeName(const std::string& name) {
