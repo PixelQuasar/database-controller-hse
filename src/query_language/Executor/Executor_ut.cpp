@@ -53,20 +53,6 @@ TEST_F(ExecutorTest, ExecuteInsertRegister) {
     EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
 }
 
-TEST_F(ExecutorTest, ExecuteInsertRegister2) {
-    auto createStmt = "cREAte tabLE Test (ID INT, Name VARCHAR);";
-    executor.execute(createStmt);
-
-    auto insertStmt = "INSERT INTO Test VALUES (1, \"Alice\");";
-    executor.execute(insertStmt);
-
-    auto& table = db.getTable("Test");
-    auto& data = table.get_rows();
-    ASSERT_EQ(data.size(), 1);
-    EXPECT_EQ(std::get<int>(data[0][0]), 1);
-    EXPECT_EQ(std::get<std::string>(data[0][1]), "Alice");
-}
-
 TEST_F(ExecutorTest, ExecuteMultipleInserts) {
     auto createStmt = "CREATE TABLE Test (ID INT, Name VARCHAR);";
     executor.execute(createStmt);

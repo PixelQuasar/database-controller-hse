@@ -533,32 +533,26 @@ Result Executor::execute(std::shared_ptr<SQLStatement> stmt) {
 
 std::string preprocess(std::string query) {
     std::unordered_map<std::string, std::string> keywords = {
-        {"create table", "CREATE TABLE"},
-        {"insert", "INSERT"},
-        {"where", "WHERE"},
-        {"by", "BY"},
-        {"on", "ON"},
-        {"join", "JOIN"},
-        {"select", "SELECT"},
-        {"update", "UPDATE"},
-        {"create index", "CREATE INDEX"}};
+            {"create table ", "CREATE TABLE "},
+            {"insert ", "INSERT "},
+            {" where ", " WHERE "},
+            {" by ", " BY "},
+            {" on ", " ON "},
+            {" join ", " JOIN "},
+            {"select ", "SELECT "},
+            {"update ", "UPDATE "},
+            {"create index ", "CREATE INDEX "}
+    };
 
     for (const auto &[key, value] : keywords) {
-        std::string pattern = "\\b" + key + "\\b";  // Match whole word
-        std::regex re(pattern,
-                      std::regex_constants::icase);  // Case-insensitive
-        query = std::regex_replace(query, re, value);
+        size_t pos = 0;
+        while ((pos = query.find(key, pos)) != std::string::npos) {
+            query.replace(pos, key.length(), value);
+            pos += value.length();
+        }
     }
 
     return query;
-}
-
-int main() {
-    std::string query = "select * from users where name = 'John'";
-    std::string result = preprocess(query);
-
-    std::cout << result << std::endl;
-    return 0;
 }
 
 Result Executor::execute(const std::string &sql) {
