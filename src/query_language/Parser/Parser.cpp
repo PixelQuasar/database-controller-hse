@@ -29,6 +29,10 @@ std::unordered_map<std::string, std::string> Parser::parseAssignValues() {
         }
 
         std::string columnName = parseIdentifier();
+        if (sql_[pos_] == '.') {
+            pos_++;
+            columnName += '.' + parseIdentifier();
+        }
         skipWhitespace();
 
         if (pos_ >= sql_.size() || sql_[pos_] != '=') {
@@ -42,8 +46,6 @@ std::unordered_map<std::string, std::string> Parser::parseAssignValues() {
 
         columnValuePairs[columnName] = value;
         firstColumn = false;
-
-        skipWhitespace();
 
         if (pos_ >= sql_.size()) {
             throw std::runtime_error("Unexpected end of input after value");
@@ -306,12 +308,9 @@ std::shared_ptr<SelectStatement> Parser::parseSelect() {
             throw std::runtime_error("Expected ON after JOIN");
         }
 
-        bool withWhere = false;
-
         std::string joinPredicate;
         while (pos_ < sql_.size() && sql_[pos_] != ';') {
             if (pos_ + 5 < sql_.size() && sql_.substr(pos_, 5) == "WHERE") {
-                withWhere = true;
                 break;
             }
             joinPredicate += sql_[pos_++];
@@ -343,35 +342,74 @@ std::shared_ptr<UpdateStatement> Parser::parseUpdate() {
     std::string tableName = parseIdentifier();
     updateStmt->tableName = tableName;
 
-    if (!matchKeyword("SET")) {
-        throw std::runtime_error(
-            "Expected SET after table name in UPDATE statement.");
-    }
-
-    pos_++;
-    // updateStmt->newValues = parseAssignValues();
-    std::unordered_map<std::string, std::string> rawValues =
-        parseAssignValues();
-
-    for (const auto& [str, value] : rawValues) {
-        ColumnStatement column;
-
-        std::size_t dotIndex = str.find('.');
-        if (dotIndex != std::string::npos) {
-            column.table = str.substr(0, dotIndex);
-            column.name = str.substr(dotIndex + 1);
-        } else {
-            column.name = str;
-        }
-
-        updateStmt->newValues[column] = value;
-    }
-
     skipWhitespace();
 
     std::string modifier = parseIdentifier();
 
-    if (modifier == "WHERE") {
+    if (modifier == "SET") {
+        skipWhitespace();
+        pos_++;
+        std::unordered_map<std::string, std::string> rawValues =
+            parseAssignValues();
+
+        for (const auto& [str, value] : rawValues) {
+            ColumnStatement column;
+
+            std::size_t dotIndex = str.find('.');
+            if (dotIndex != std::string::npos) {
+                column.table = str.substr(0, dotIndex);
+                column.name = str.substr(dotIndex + 1);
+            } else {
+                column.name = str;
+            }
+
+            updateStmt->newValues[column] = value;
+        }
+    } else if (modifier == "JOIN") {
+        skipWhitespace();
+        updateStmt->foreignTableName = parseIdentifier();
+
+        skipWhitespace();
+        if (!matchKeyword("ON")) {
+            throw std::runtime_error("Expected ON after JOIN");
+        }
+
+        std::string joinPredicate;
+        while (pos_ < sql_.size() && sql_[pos_] != ';') {
+            if (pos_ + 3 < sql_.size() && sql_.substr(pos_, 3) == "SET") {
+                break;
+            }
+            joinPredicate += sql_[pos_++];
+        }
+        joinPredicate = trim(joinPredicate);
+
+        updateStmt->joinPredicate = joinPredicate;
+
+        skipWhitespace();
+
+        if (matchKeyword("SET")) {
+            pos_++;
+            std::unordered_map<std::string, std::string> rawValues =
+                parseAssignValues();
+
+            for (const auto& [str, value] : rawValues) {
+                ColumnStatement column;
+
+                std::size_t dotIndex = str.find('.');
+                if (dotIndex != std::string::npos) {
+                    column.table = str.substr(0, dotIndex);
+                    column.name = str.substr(dotIndex + 1);
+                } else {
+                    column.name = str;
+                }
+
+                updateStmt->newValues[column] = value;
+            }
+        }
+    }
+
+    skipWhitespace();
+    if (matchKeyword("WHERE")) {
         std::string predicate;
         skipWhitespace();
 
@@ -400,40 +438,6 @@ std::shared_ptr<UpdateStatement> Parser::parseUpdate() {
         }
 
         updateStmt->predicate = cleanPredicate;
-    } else if (modifier == "JOIN") {
-        skipWhitespace();
-        updateStmt->foreignTableName = parseIdentifier();
-
-        skipWhitespace();
-        if (!matchKeyword("ON")) {
-            throw std::runtime_error("Expected ON after JOIN");
-        }
-
-        bool withWhere = false;
-
-        std::string joinPredicate;
-        while (pos_ < sql_.size() && sql_[pos_] != ';') {
-            if (pos_ + 5 < sql_.size() && sql_.substr(pos_, 5) == "WHERE") {
-                withWhere = true;
-                break;
-            }
-            joinPredicate += sql_[pos_++];
-        }
-        joinPredicate = trim(joinPredicate);
-
-        updateStmt->joinPredicate = joinPredicate;
-
-        skipWhitespace();
-
-        if (matchKeyword("WHERE")) {
-            std::string predicate;
-            while (pos_ < sql_.size() && sql_[pos_] != ';') {
-                predicate += sql_[pos_++];
-            }
-            predicate = trim(predicate);
-
-            updateStmt->predicate = predicate;
-        }
     }
 
     return updateStmt;

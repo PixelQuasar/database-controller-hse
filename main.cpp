@@ -28,14 +28,37 @@ int main() {
 
     auto selectStmt =
         ("SELECT User.Name, Post.Text FROM User JOIN Post ON User.ID == "
-         "Post.AuthorId WHERE User.Name == \"Alice\";");
+         "Post.AuthorId;");
     auto result = executor.execute(selectStmt);
     std::cout << result.get_error_message() << std::endl;
     for (auto& row : result) {
         for (auto& [key, value] : row) {
-            std::cout << key << ":" << dBTypeToString(value) << "   ";
+            std::cout << key << ": " << dBTypeToString(value) << "   ";
         }
         std::cout << std::endl;
     }
+    auto updateStmt =
+        ("UPDATE User JOIN Post ON Post.AuthorId == User.ID SET (Post.Text = "
+         "\"EDITED\", User.Name = \"EDITED\")");
+
+    // auto updateStmt =
+    //     ("UPDATE User JOIN Post ON Post.AuthorId == User.ID SET (User.ID = "
+    //      "User.ID + 1)");
+
+    result = executor.execute(updateStmt);
+    std::cout << result.get_error_message() << std::endl;
+
+    selectStmt =
+        ("SELECT User.Name, Post.Text FROM User JOIN Post ON User.ID "
+         "== Post.AuthorId;");
+    result = executor.execute(selectStmt);
+    std::cout << result.get_error_message() << std::endl;
+    for (auto& row : result) {
+        for (auto& [key, value] : row) {
+            std::cout << key << ": " << dBTypeToString(value) << "   ";
+        }
+        std::cout << std::endl;
+    }
+
     return 0;
 }

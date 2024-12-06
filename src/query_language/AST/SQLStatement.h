@@ -1,6 +1,7 @@
 #ifndef DATABASE_CONTROLLER_HSE_SQLSTATEMENT_H
 #define DATABASE_CONTROLLER_HSE_SQLSTATEMENT_H
 
+#include <iostream>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -100,6 +101,9 @@ class SelectStatement : public SQLStatement {
             }
         }
         result += " FROM " + tableName;
+        if (!foreignTableName.empty()) {
+            result += " JOIN " + foreignTableName + " ON " + joinPredicate;
+        }
         if (!predicate.empty()) {
             result += " WHERE " + predicate;
         }
@@ -123,6 +127,11 @@ class UpdateStatement : public SQLStatement {
     std::string toString() const override {
         std::string result = "UPDATE ";
         bool isFirst = true;
+        result += tableName;
+        if (!foreignTableName.empty()) {
+            result += " JOIN " + foreignTableName + " ON " + joinPredicate;
+        }
+        result += " SET ";
         for (const auto& [column, value] : newValues) {
             if (!isFirst) {
                 result += ", ";
@@ -133,7 +142,6 @@ class UpdateStatement : public SQLStatement {
             result += column.name + " = " + value;
             isFirst = false;
         }
-        result += " FROM " + tableName;
         if (!predicate.empty()) {
             result += " WHERE " + predicate;
         }
